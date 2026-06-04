@@ -1,5 +1,11 @@
-const CACHE = 'tracker-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json'];
+const CACHE = 'fitcore-v1';
+const ASSETS = [
+  '/FitCore/',
+  '/FitCore/index.html',
+  '/FitCore/manifest.json',
+  '/FitCore/icon-192.png',
+  '/FitCore/icon-512.png',
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
