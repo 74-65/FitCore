@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Tracker">
+  <meta name="theme-color" content="#0a0a09">
+  <title>Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg0: #0a0a09; --bg1: #131312; --bg2: #1a1a18; --bg3: #222220;
+      --border: rgba(255,255,255,0.07); --border-med: rgba(255,255,255,0.12);
+      --text0: #f0ede6; --text1: #a8a49c; --text2: #5c5a55;
+      --accent: #c8f060; --accent-dim: rgba(200,240,96,0.12); --accent-dim2: rgba(200,240,96,0.06);
+      --red: #ff6b6b; --red-dim: rgba(255,107,107,0.12);
+      --amber: #f0a840; --amber-dim: rgba(240,168,64,0.12);
+      --blue: #60b8f0; --blue-dim: rgba(96,184,240,0.10);
+      --radius-sm: 10px; --radius-md: 14px; --radius-lg: 20px; --radius-xl: 28px;
+      --font-head: 'Syne', sans-serif; --font-mono: 'DM Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { background: var(--bg0); color: var(--text0); font-family: var(--font-head); min-height: 100dvh; overflow-x: hidden; }
+    #app { max-width: 430px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; padding-bottom: 80px; }
+
+    /* NAV */
+    .nav-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: rgba(13,13,12,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0 10px; cursor: pointer; color: var(--text2); font-size: 10px; font-family: var(--font-mono); letter-spacing: 0.04em; transition: color 0.2s; }
+    .nav-item i { font-size: 19px; }
+    .nav-item.active { color: var(--accent); }
+
+    /* SCREENS */
+    .screen { display: none; padding: 0 16px; }
+    .screen.active { display: block; }
+
+    /* HEADERS */
+    .page-header { padding: 56px 0 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .page-header h1 { font-size: 26px; font-weight: 700; color: var(--text0); line-height: 1.1; }
+    .page-header .date { font-family: var(--font-mono); font-size: 11px; color: var(--text2); letter-spacing: 0.06em; }
+    .streak-pill { display: flex; align-items: center; gap: 6px; background: var(--accent-dim); border: 0.5px solid rgba(200,240,96,0.2); border-radius: 20px; padding: 6px 12px; font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+
+    /* STAT CARDS */
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 14px; }
+    .stats-row-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 14px; }
+    .stat-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 8px; }
+    .stat-card .val { font-size: 20px; font-weight: 700; color: var(--text0); }
+    .stat-card .val.g { color: var(--accent); }
+    .stat-card .val.a { color: var(--amber); }
+    .stat-card .val.r { color: var(--red); }
+    .stat-card .val.b { color: var(--blue); }
+    .stat-card .lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text2); letter-spacing: 0.05em; margin-top: 2px; }
+
+    /* WEEK */
+    .week-row { display: flex; justify-content: space-between; margin-bottom: 18px; padding: 0 2px; }
+    .week-day { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .week-dot { width: 32px; height: 32px; border-radius: 50%; border: 0.5px solid var(--border-med); background: var(--bg2); display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.2s; }
+    .week-dot.done { background: var(--accent); border-color: var(--accent); }
+    .week-dot.done i { color: var(--bg0); font-size: 12px; }
+    .week-dot.today { border-color: rgba(200,240,96,0.4); }
+    .week-label { font-family: var(--font-mono); font-size: 10px; color: var(--text2); }
+    .week-label.today { color: var(--accent); }
+
+    /* SECTION LABEL */
+    .section-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--text2); text-transform: uppercase; margin-bottom: 8px; margin-top: 2px; }
+
+    /* HABIT CARDS */
+    .habits-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 20px; }
+    .habit-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.15s, border-color 0.2s; user-select: none; }
+    .habit-card:active { transform: scale(0.99); }
+    .habit-card.done { background: var(--accent-dim2); border-color: rgba(200,240,96,0.22); }
+    .habit-icon { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; background: var(--bg3); }
+    .habit-info { flex: 1; min-width: 0; }
+    .habit-name { font-size: 14px; font-weight: 600; color: var(--text0); }
+    .habit-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text2); margin-top: 2px; }
+    .habit-check { width: 27px; height: 27px; border-radius: 50%; border: 1.5px solid var(--border-med); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+    .habit-card.done .habit-check { background: var(--accent); border-color: var(--accent); }
+    .habit-card.done .habit-check i { color: var(--bg0); font-size: 12px; }
+
+    /* INTENSITY PICKER — shows after tap */
+    .intensity-row { display: flex; gap: 5px; margin-top: 9px; }
+    .int-btn { flex: 1; border: 0.5px solid var(--border-med); border-radius: 8px; padding: 5px 4px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.03em; text-align: center; cursor: pointer; color: var(--text2); background: var(--bg3); transition: all 0.15s; }
+    .int-btn:active { transform: scale(0.95); }
+    .int-btn.sel-high { background: var(--accent); color: var(--bg0); border-color: var(--accent); font-weight: 600; }
+    .int-btn.sel-mid  { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
+    .int-btn.sel-low  { background: var(--accent-dim); color: var(--accent); border-color: rgba(200,240,96,0.35); }
+
+    /* NOTE AREA */
+    .note-area { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; margin-bottom: 8px; }
+    .note-input { width: 100%; background: transparent; border: none; color: var(--text0); font-family: var(--font-head); font-size: 14px; resize: none; outline: none; line-height: 1.6; }
+    .note-input::placeholder { color: var(--text2); }
+    .note-submit { width: 100%; background: var(--accent); color: var(--bg0); border: none; border-radius: var(--radius-md); padding: 12px; font-family: var(--font-head); font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity 0.15s; }
+    .note-submit:active { opacity: 0.8; }
+    .notes-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 20px; }
+    .note-entry { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 13px; display: flex; gap: 9px; }
+    .note-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
+    .note-text { font-size: 13px; color: var(--text1); line-height: 1.5; }
+    .note-time { font-family: var(--font-mono); font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+    /* WHOOP BLOCK */
+    .whoop-block { background: var(--blue-dim); border: 0.5px solid rgba(96,184,240,0.2); border-radius: var(--radius-lg); padding: 13px 15px; margin-bottom: 14px; }
+    .whoop-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .whoop-title { font-size: 12px; font-weight: 600; color: var(--blue); }
+    .whoop-badge { font-family: var(--font-mono); font-size: 10px; color: rgba(96,184,240,0.6); }
+    .whoop-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+    .whoop-metric { background: rgba(96,184,240,0.08); border-radius: var(--radius-sm); padding: 7px 6px; text-align: center; }
+    .whoop-metric .wv { font-size: 14px; font-weight: 700; color: var(--blue); }
+    .whoop-metric .wl { font-family: var(--font-mono); font-size: 9px; color: rgba(96,184,240,0.5); margin-top: 2px; }
+    .whoop-coming { font-family: var(--font-mono); font-size: 10px; color: rgba(96,184,240,0.4); text-align: center; padding: 6px; }
+
+    /* MEAL SLOT logged state */
+    .meal-slot-logged { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+
+    /* DIVIDER */
+    .divider { height: 0.5px; background: var(--bg3); margin: 14px 0; }
+
+    /* KETO SCREEN */
+    .keto-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .keto-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 13px 13px 11px; cursor: default; }
+    .k-icon { font-size: 20px; margin-bottom: 6px; }
+    .k-name { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--text2); text-transform: uppercase; margin-bottom: 2px; }
+    .k-goal { font-family: var(--font-mono); font-size: 9px; color: var(--text2); margin-bottom: 6px; opacity: 0.7; }
+    .k-val { font-size: 16px; font-weight: 700; color: var(--text2); margin-bottom: 7px; }
+    .k-val.g { color: var(--accent); }
+    .k-val.a { color: var(--amber); }
+    .k-val.r { color: var(--red); }
+    .level-row { display: flex; gap: 4px; }
+    .level-btn { flex: 1; border: 0.5px solid var(--border-med); border-radius: 7px; padding: 5px 2px; font-family: var(--font-mono); font-size: 9px; text-align: center; cursor: pointer; color: var(--text2); background: var(--bg3); transition: all 0.12s; }
+    .level-btn:active { transform: scale(0.95); }
+    .active-high { background: var(--accent); color: var(--bg0); border-color: var(--accent); font-weight: 600; }
+    .active-mid  { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
+    .active-low  { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+    /* carbs: low = good */
+    .keto-card[data-cat="carbs"] .active-low { background: var(--accent-dim); color: var(--accent); border-color: rgba(200,240,96,0.4); }
+    .keto-card[data-cat="carbs"] .active-high { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+
+    .keto-status { border-radius: var(--radius-md); padding: 11px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 600; border: 0.5px solid; }
+    .keto-status.good { background: var(--accent-dim); border-color: rgba(200,240,96,0.25); color: var(--accent); }
+    .keto-status.warn { background: var(--amber-dim); border-color: rgba(240,168,64,0.25); color: var(--amber); }
+    .keto-status.bad  { background: var(--red-dim); border-color: rgba(255,107,107,0.25); color: var(--red); }
+
+    /* MEAL LOG */
+    .add-meal-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 14px; }
+    .form-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--text2); text-transform: uppercase; margin-bottom: 5px; }
+    .form-input { width: 100%; background: var(--bg3); border: 0.5px solid var(--border-med); border-radius: var(--radius-sm); padding: 9px 11px; color: var(--text0); font-family: var(--font-head); font-size: 14px; outline: none; margin-bottom: 10px; transition: border-color 0.15s; }
+    .form-input:focus { border-color: rgba(200,240,96,0.4); }
+    .form-input::placeholder { color: var(--text2); }
+    .form-levels { display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; margin-bottom: 10px; }
+    .form-level-group .form-level-label { font-family: var(--font-mono); font-size: 9px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .form-level-btns { display: flex; flex-direction: column; gap: 3px; }
+    .form-level-btn { border: 0.5px solid var(--border-med); border-radius: 6px; padding: 4px 2px; font-family: var(--font-mono); font-size: 9px; text-align: center; cursor: pointer; color: var(--text2); background: var(--bg3); transition: all 0.12s; }
+    .form-level-btn:active { transform: scale(0.95); }
+    .form-level-btn.sel-high { background: var(--accent); color: var(--bg0); border-color: var(--accent); font-weight: 600; }
+    .form-level-btn.sel-mid  { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
+    .form-level-btn.sel-low  { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+    .meals-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 20px; }
+    .meal-entry { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 13px; }
+    .meal-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .meal-name { font-size: 13px; font-weight: 600; color: var(--text0); }
+    .meal-time { font-family: var(--font-mono); font-size: 10px; color: var(--text2); }
+    .meal-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+    .meal-pill { font-family: var(--font-mono); font-size: 9px; padding: 2px 7px; border-radius: 5px; border: 0.5px solid; }
+    .meal-pill.high { background: var(--accent-dim); color: var(--accent); border-color: rgba(200,240,96,0.3); }
+    .meal-pill.mid  { background: var(--amber-dim); color: var(--amber); border-color: rgba(240,168,64,0.3); }
+    .meal-pill.low  { background: var(--red-dim); color: var(--red); border-color: rgba(255,107,107,0.3); }
+    /* carbs pill: low = good */
+    .meal-pill.carbs-low  { background: var(--accent-dim); color: var(--accent); border-color: rgba(200,240,96,0.3); }
+    .meal-pill.carbs-high { background: var(--red-dim); color: var(--red); border-color: rgba(255,107,107,0.3); }
+
+    /* STATS */
+    .chart-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
+    .chart-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--text2); text-transform: uppercase; margin-bottom: 12px; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 80px; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 3px; background: var(--bg3); transition: height 0.4s ease; }
+    .bar.done { background: var(--accent); }
+    .bar-lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text2); }
+    .bar-lbl.today { color: var(--accent); }
+    .prog-row { display: flex; flex-direction: column; gap: 5px; }
+    .prog-item { display: flex; align-items: center; gap: 8px; }
+    .prog-lbl { font-size: 11px; width: 110px; flex-shrink: 0; color: var(--text1); }
+    .prog-bg { flex: 1; height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+    .prog-val { font-family: var(--font-mono); font-size: 10px; color: var(--text2); width: 28px; text-align: right; }
+    .streak-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-bottom: 10px; }
+    .streak-cell { aspect-ratio: 1; border-radius: 4px; background: var(--bg3); }
+    .streak-cell.l1 { background: rgba(200,240,96,0.2); }
+    .streak-cell.l2 { background: rgba(200,240,96,0.45); }
+    .streak-cell.l3 { background: var(--accent); }
+
+    /* SETTINGS */
+    .settings-section { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 14px; }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 0.5px solid var(--border); cursor: pointer; }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-left { display: flex; align-items: center; gap: 11px; }
+    .settings-row-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .settings-row-name { font-size: 13px; font-weight: 500; color: var(--text0); }
+    .settings-row-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text2); margin-top: 1px; }
+    .coming-badge { font-family: var(--font-mono); font-size: 10px; padding: 3px 7px; border-radius: 5px; background: var(--bg3); color: var(--text2); border: 0.5px solid var(--border); }
+    .version-label { text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--text2); letter-spacing: 0.06em; padding: 6px 0 14px; }
+
+    @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.06)} 100%{transform:scale(1)} }
+    .pop { animation: pop 0.22s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+    .fade-in { animation: fadeIn 0.22s ease forwards; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ HEUTE ══ -->
+  <div class="screen active" id="screen-today">
+    <div class="page-header">
+      <div>
+        <h1 id="greeting">Hallo 👋</h1>
+        <div class="date" id="today-date"></div>
+      </div>
+      <div class="streak-pill">
+        <i class="fa-solid fa-fire"></i>
+        <span id="streak-label">0 Tage</span>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="val" id="stat-done">0</div><div class="lbl">erledigt</div></div>
+      <div class="stat-card"><div class="val" id="stat-total">6</div><div class="lbl">habits</div></div>
+      <div class="stat-card"><div class="val g" id="stat-pct">0%</div><div class="lbl">heute</div></div>
+      <div class="stat-card"><div class="val a" id="stat-streak2">0</div><div class="lbl">streak</div></div>
+    </div>
+
+    <div class="week-row" id="week-row"></div>
+
+    <div class="section-label">WHOOP</div>
+    <div class="whoop-block" id="whoop-today-block">
+      <div class="whoop-top">
+        <div class="whoop-title">⌚ Heute</div>
+        <div id="whoop-sync-status" class="whoop-badge">—</div>
+      </div>
+      <div id="whoop-today-content">
+        <div class="whoop-coming" id="whoop-connect-hint">
+          <span id="whoop-hint-text">Nicht verbunden — </span>
+          <span onclick="whoopConnect()" style="color:var(--blue);cursor:pointer;text-decoration:underline;">WHOOP verbinden</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Sport</div>
+    <div class="habits-list" id="sport-list"></div>
+
+    <div class="section-label">Habits</div>
+    <div class="habits-list" id="habits-list"></div>
+
+    <div class="divider"></div>
+    <div class="section-label">Notiz</div>
+    <div class="note-area">
+      <textarea class="note-input" id="note-input" rows="2" placeholder="Was war heute besonders?"></textarea>
+      <button class="note-submit" onclick="addNote()">Speichern</button>
+    </div>
+    <div class="section-label" id="notes-label" style="display:none;margin-top:14px;">Heute notiert</div>
+    <div class="notes-list" id="notes-list"></div>
+  </div>
+
+  <!-- ══ KETO ══ -->
+  <div class="screen" id="screen-keto">
+    <div class="page-header" style="padding-bottom:10px;">
+      <div>
+        <h1>Ernährung</h1>
+        <div class="date">Keto · Ziele: 150g Protein · &lt;20g KH · −500 kcal</div>
+      </div>
+    </div>
+
+    <div id="keto-status-banner" style="display:none;"></div>
+
+    <div class="keto-grid">
+      <div class="keto-card" data-cat="protein">
+        <div class="k-icon">🥩</div>
+        <div class="k-name">Protein</div>
+        <div class="k-goal">Ziel: 150g</div>
+        <div class="k-val" id="kv-protein">—</div>
+        <div class="level-row">
+          <div class="level-btn" data-cat="protein" data-val="high" onclick="setKetoLevel('protein','high',this)">Hoch</div>
+          <div class="level-btn" data-cat="protein" data-val="mid"  onclick="setKetoLevel('protein','mid',this)">Mittel</div>
+          <div class="level-btn" data-cat="protein" data-val="low"  onclick="setKetoLevel('protein','low',this)">Gering</div>
+        </div>
+      </div>
+      <div class="keto-card" data-cat="carbs">
+        <div class="k-icon">🌿</div>
+        <div class="k-name">Kohlenhydrate</div>
+        <div class="k-goal">Ziel: &lt;20g</div>
+        <div class="k-val" id="kv-carbs">—</div>
+        <div class="level-row">
+          <div class="level-btn" data-cat="carbs" data-val="high" onclick="setKetoLevel('carbs','high',this)">Hoch</div>
+          <div class="level-btn" data-cat="carbs" data-val="mid"  onclick="setKetoLevel('carbs','mid',this)">Mittel</div>
+          <div class="level-btn" data-cat="carbs" data-val="low"  onclick="setKetoLevel('carbs','low',this)">Gering</div>
+        </div>
+      </div>
+      <div class="keto-card" data-cat="calories">
+        <div class="k-icon">⚡</div>
+        <div class="k-name">Kalorien</div>
+        <div class="k-goal">Ziel: −500 kcal</div>
+        <div class="k-val" id="kv-calories">—</div>
+        <div class="level-row">
+          <div class="level-btn" data-cat="calories" data-val="high" onclick="setKetoLevel('calories','high',this)">Hoch</div>
+          <div class="level-btn" data-cat="calories" data-val="mid"  onclick="setKetoLevel('calories','mid',this)">Mittel</div>
+          <div class="level-btn" data-cat="calories" data-val="low"  onclick="setKetoLevel('calories','low',this)">Gering</div>
+        </div>
+      </div>
+      <div class="keto-card" data-cat="health">
+        <div class="k-icon">💚</div>
+        <div class="k-name">Gesund?</div>
+        <div class="k-goal">Lebensmittelqualität</div>
+        <div class="k-val" id="kv-health">—</div>
+        <div class="level-row">
+          <div class="level-btn" data-cat="health" data-val="high" onclick="setKetoLevel('health','high',this)">Hoch</div>
+          <div class="level-btn" data-cat="health" data-val="mid"  onclick="setKetoLevel('health','mid',this)">Mittel</div>
+          <div class="level-btn" data-cat="health" data-val="low"  onclick="setKetoLevel('health','low',this)">Gering</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:2px;">Fastenfenster</div>
+    <div class="add-meal-card" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:22px;">⏱️</span>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:var(--text0);margin-bottom:2px;">Fastendauer heute</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text2);">Abends bis erste Mahlzeit</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="fast-input" min="0" max="24" step="0.5"
+            placeholder="—"
+            oninput="saveFasting(this.value)"
+            style="width:56px;background:var(--bg3);border:0.5px solid var(--border-med);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text0);font-family:var(--font-mono);font-size:16px;font-weight:700;text-align:center;outline:none;">
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--text2);">h</span>
+        </div>
+        <div id="fast-badge" style="min-width:42px;text-align:center;"></div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:2px;">Mahlzeiten</div>
+    <div id="meals-sections"></div>
+  </div>
+
+  <!-- ══ VERLAUF ══ -->
+  <div class="screen" id="screen-stats">
+    <div class="page-header" style="padding-bottom:10px;"><div><h1>Verlauf</h1></div></div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="val g" id="sv-streak">0</div><div class="lbl">streak</div></div>
+      <div class="stat-card"><div class="val" id="sv-best">0</div><div class="lbl">best</div></div>
+      <div class="stat-card"><div class="val a" id="sv-days">0</div><div class="lbl">akt. Tage</div></div>
+      <div class="stat-card"><div class="val" id="sv-week">0%</div><div class="lbl">Ø Woche</div></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Habits diese Woche</div>
+      <div class="bar-chart" id="bar-chart"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Habit-Aufschlüsselung (7 Tage)</div>
+      <div class="prog-row" id="habit-breakdown"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Aktivität letzte 28 Tage</div>
+      <div class="streak-grid" id="streak-grid"></div>
+    </div>
+  </div>
+
+  <!-- ══ EINSTELLUNGEN ══ -->
+  <div class="screen" id="screen-settings">
+    <div class="page-header" style="padding-bottom:10px;"><div><h1>Einstellungen</h1></div></div>
+
+    <div class="section-label">Integrationen</div>
+    <div class="settings-section">
+      <div class="settings-row" onclick="whoopConnect()" id="whoop-settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" style="background:var(--blue-dim);">⌚</div>
+          <div><div class="settings-row-name">WHOOP</div><div class="settings-row-sub" id="whoop-settings-sub">Nicht verbunden</div></div>
+        </div>
+        <span id="whoop-settings-badge" style="font-family:var(--font-mono);font-size:10px;padding:3px 7px;border-radius:5px;background:var(--blue-dim);color:var(--blue);border:0.5px solid rgba(96,184,240,0.3);">Verbinden</span>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" style="background:var(--accent-dim);">☁️</div>
+          <div><div class="settings-row-name">Supabase Sync</div><div class="settings-row-sub">Geräteübergreifend</div></div>
+        </div>
+        <span class="coming-badge">bald</span>
+      </div>
+    </div>
+
+    <div class="section-label">Wochenziele Sport</div>
+    <div class="settings-section">
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" style="background:var(--bg3);">🎾</div>
+          <div><div class="settings-row-name">Tennis</div><div class="settings-row-sub">Wochenziel noch nicht gesetzt</div></div>
+        </div>
+        <span class="coming-badge">bald</span>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" style="background:var(--bg3);">🏋️</div>
+          <div><div class="settings-row-name">Krafttraining</div><div class="settings-row-sub">Wochenziel noch nicht gesetzt</div></div>
+        </div>
+        <span class="coming-badge">bald</span>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" style="background:var(--bg3);">🫀</div>
+          <div><div class="settings-row-name">Cardio</div><div class="settings-row-sub">Wochenziel noch nicht gesetzt</div></div>
+        </div>
+        <span class="coming-badge">bald</span>
+      </div>
+    </div>
+
+    <div class="section-label">Daten</div>
+    <div class="settings-section">
+      <div class="settings-row" onclick="exportData()">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" style="background:var(--bg3);">📤</div>
+          <div><div class="settings-row-name">Daten exportieren</div><div class="settings-row-sub">JSON Download</div></div>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="color:var(--text2);font-size:12px;"></i>
+      </div>
+      <div class="settings-row" onclick="if(confirm('Alle Daten löschen?')) clearData()">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" style="background:var(--red-dim);">🗑️</div>
+          <div><div class="settings-row-name" style="color:var(--red);">Daten löschen</div><div class="settings-row-sub">Nicht rückgängig machbar</div></div>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="color:var(--text2);font-size:12px;"></i>
+      </div>
+    </div>
+
+    <div class="version-label" id="version-label">v0.3.0 · FitCore · lokal gespeichert</div>
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav-bar">
+    <div class="nav-item active" onclick="showScreen('today',this)"><i class="fa-solid fa-house"></i><span>Heute</span></div>
+    <div class="nav-item" onclick="showScreen('keto',this)"><i class="fa-solid fa-bowl-food"></i><span>Keto</span></div>
+    <div class="nav-item" onclick="showScreen('stats',this)"><i class="fa-solid fa-chart-simple"></i><span>Verlauf</span></div>
+    <div class="nav-item" onclick="showScreen('settings',this)"><i class="fa-solid fa-gear"></i><span>Einstellungen</span></div>
+  </nav>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════
+const SPORT_HABITS = [
+  { id:'tennis',  name:'Tennis',        icon:'🎾', sub:'Gespielt oder trainiert' },
+  { id:'kraft',   name:'Krafttraining', icon:'🏋️', sub:'Gym oder Zuhause' },
+  { id:'cardio',  name:'Cardio',        icon:'🫀', sub:'Laufen, Rad, etc.' },
+];
+const OTHER_HABITS = [
+  { id:'lesen',   name:'Lesen',          icon:'📚', sub:'Mind. 30 min' },
+  { id:'wasser',  name:'Wasser',         icon:'💧', sub:'Ausreichend getrunken' },
+  { id:'schlaf',  name:'Gut geschlafen', icon:'😴', sub:'Erholsame Nacht' },
+];
+const ALL_HABITS = [...SPORT_HABITS, ...OTHER_HABITS];
+
+const LEVEL_LABELS = { high:'Hoch', mid:'Mittel', low:'Gering' };
+
+// ══════════════════════════════════════════
+// WHOOP CONFIG — trag hier deine Werte ein
+// ══════════════════════════════════════════
+const WHOOP_CLIENT_ID     = 'DEINE_CLIENT_ID';
+const WHOOP_CLIENT_SECRET = 'DEIN_CLIENT_SECRET';
+const WHOOP_REDIRECT_URI  = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/') + 'callback';
+const WHOOP_SCOPES        = 'read:recovery read:cycles read:sleep read:workout read:body_measurement offline';
+
+// Keto: which level is "good" per category
+const KETO_GOOD = { protein:'high', carbs:'low', calories:'high', health:'high' };
+// calories: high=good (deficit achieved), mid=ok, low=bad (surplus)
+// carbs: low=good, mid=warn, high=bad
+
+function ketoColor(cat, val) {
+  if (!val) return '';
+  if (cat === 'carbs') {
+    if (val === 'low')  return 'g';
+    if (val === 'mid')  return 'a';
+    if (val === 'high') return 'r';
+  }
+  if (cat === 'calories') {
+    if (val === 'high') return 'g';
+    if (val === 'mid')  return 'a';
+    if (val === 'low')  return 'r';
+  }
+  if (val === 'high') return 'g';
+  if (val === 'mid')  return 'a';
+  if (val === 'low')  return 'r';
+}
+
+// ══════════════════════════════════════════
+// STORAGE
+// ══════════════════════════════════════════
+function todayKey() { return new Date().toISOString().split('T')[0]; }
+function loadState() { try { return JSON.parse(localStorage.getItem('tracker_v2')||'{}'); } catch(e) { return {}; } }
+function saveState(s) { localStorage.setItem('tracker_v2', JSON.stringify(s)); }
+function getDay(key) {
+  const s = loadState();
+  if (!s.days) s.days = {};
+  if (!s.days[key]) s.days[key] = { habits:{}, sport:{}, keto:{}, meals:[], notes:[] };
+  // migrate: ensure sport object exists
+  if (!s.days[key].sport) s.days[key].sport = {};
+  return s.days[key];
+}
+function saveDay(key, day) {
+  const s = loadState();
+  if (!s.days) s.days = {};
+  s.days[key] = day;
+  saveState(s);
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Handle OAuth callback if redirected back from WHOOP
+  handleOAuthCallback();
+  renderHeader();
+  renderWeek();
+  renderSportHabits();
+  renderOtherHabits();
+  renderNotes();
+  renderStats();
+  renderWhoopBlock();
+  updateWhoopSettings();
+  // Auto-sync WHOOP if connected and data is older than 30 min
+  const wd = getWhoopData();
+  const tokens = getWhoopTokens();
+  if (tokens && (!wd || Date.now() - wd.synced_at > 30 * 60 * 1000)) {
+    whoopSync();
+  }
+});
+
+function renderHeader() {
+  const h = new Date().getHours();
+  const greet = h < 12 ? 'Guten Morgen 🌅' : h < 18 ? 'Hallo 👋' : 'Guten Abend 🌙';
+  document.getElementById('greeting').textContent = greet;
+  const d = new Date();
+  const days = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  document.getElementById('today-date').textContent = `${days[d.getDay()]}, ${d.getDate()}. ${months[d.getMonth()]}`;
+  const streak = calcStreak();
+  document.getElementById('streak-label').textContent = streak + ' Tag' + (streak===1?'':'e');
+  document.getElementById('stat-streak2').textContent = streak;
+}
+
+function renderWeek() {
+  const row = document.getElementById('week-row');
+  row.innerHTML = '';
+  const today = new Date();
+  const dayNames = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    const key = d.toISOString().split('T')[0];
+    const day = getDay(key);
+    const done = ALL_HABITS.filter(h => day.habits[h.id] || day.sport[h.id]).length;
+    const isToday = i===0, full = done===ALL_HABITS.length && done>0;
+    const el = document.createElement('div');
+    el.className = 'week-day';
+    el.innerHTML = `
+      <div class="week-dot${full?' done':''}${isToday&&!full?' today':''}">
+        ${full ? '<i class="fa-solid fa-check"></i>' : (isToday ? '·' : '')}
+      </div>
+      <div class="week-label${isToday?' today':''}">${dayNames[d.getDay()]}</div>`;
+    row.appendChild(el);
+  }
+}
+
+// ══════════════════════════════════════════
+// SPORT HABITS
+// ══════════════════════════════════════════
+function renderSportHabits() {
+  const list = document.getElementById('sport-list');
+  list.innerHTML = '';
+  const key = todayKey();
+  const day = getDay(key);
+  let sportDone = 0;
+
+  SPORT_HABITS.forEach(h => {
+    const entry = day.sport[h.id]; // null | { intensity: 'high'|'mid'|'low' }
+    const isDone = !!entry;
+    if (isDone) sportDone++;
+
+    const card = document.createElement('div');
+    card.className = 'habit-card' + (isDone ? ' done' : '');
+    card.id = 'scard-' + h.id;
+
+    const intensity = entry ? entry.intensity : null;
+    const intLabel = intensity ? ` · ${LEVEL_LABELS[intensity]}` : '';
+
+    card.innerHTML = `
+      <div class="habit-icon">${h.icon}</div>
+      <div class="habit-info" style="flex:1;">
+        <div class="habit-name">${h.name}</div>
+        <div class="habit-sub" id="ssub-${h.id}">${isDone ? 'Trainiert ✓' + intLabel : h.sub}</div>
+        ${isDone ? `<div class="intensity-row" id="irow-${h.id}">
+          <div class="int-btn${intensity==='high'?' sel-high':''}" onclick="setSportIntensity('${h.id}','high',event)">Intensiv</div>
+          <div class="int-btn${intensity==='mid'?' sel-mid':''}"  onclick="setSportIntensity('${h.id}','mid',event)">Normal</div>
+          <div class="int-btn${intensity==='low'?' sel-low':''}"  onclick="setSportIntensity('${h.id}','low',event)">Locker</div>
+        </div>` : ''}
+      </div>
+      <div class="habit-check" id="scheck-${h.id}">
+        ${isDone ? '<i class="fa-solid fa-check"></i>' : ''}
+      </div>`;
+    card.onclick = (e) => {
+      if (e.target.classList.contains('int-btn')) return;
+      toggleSport(h.id);
+    };
+    list.appendChild(card);
+  });
+
+  updateTodayStats();
+}
+
+function toggleSport(id) {
+  const key = todayKey();
+  const day = getDay(key);
+  if (day.sport[id]) {
+    delete day.sport[id];
+  } else {
+    day.sport[id] = { intensity: null };
+  }
+  saveDay(key, day);
+  const card = document.getElementById('scard-' + id);
+  if (card) { card.classList.add('pop'); card.addEventListener('animationend', () => card.classList.remove('pop'), {once:true}); }
+  renderSportHabits();
+  renderWeek();
+  renderHeader();
+  renderStats();
+}
+
+function setSportIntensity(id, val, e) {
+  e.stopPropagation();
+  const key = todayKey();
+  const day = getDay(key);
+  if (!day.sport[id]) day.sport[id] = {};
+  day.sport[id].intensity = day.sport[id].intensity === val ? null : val;
+  saveDay(key, day);
+  renderSportHabits();
+}
+
+// ══════════════════════════════════════════
+// OTHER HABITS
+// ══════════════════════════════════════════
+function renderOtherHabits() {
+  const list = document.getElementById('habits-list');
+  list.innerHTML = '';
+  const key = todayKey();
+  const day = getDay(key);
+
+  OTHER_HABITS.forEach(h => {
+    const isDone = !!day.habits[h.id];
+    const card = document.createElement('div');
+    card.className = 'habit-card' + (isDone ? ' done' : '');
+    card.id = 'hcard-' + h.id;
+    card.innerHTML = `
+      <div class="habit-icon">${h.icon}</div>
+      <div class="habit-info">
+        <div class="habit-name">${h.name}</div>
+        <div class="habit-sub">${isDone ? 'Heute erledigt ✓' : h.sub}</div>
+      </div>
+      <div class="habit-check" id="hcheck-${h.id}">
+        ${isDone ? '<i class="fa-solid fa-check"></i>' : ''}
+      </div>`;
+    card.onclick = () => toggleHabit(h.id);
+    list.appendChild(card);
+  });
+
+  updateTodayStats();
+}
+
+function toggleHabit(id) {
+  const key = todayKey();
+  const day = getDay(key);
+  day.habits[id] = !day.habits[id];
+  saveDay(key, day);
+  const card = document.getElementById('hcard-' + id);
+  if (card) { card.classList.add('pop'); card.addEventListener('animationend', () => card.classList.remove('pop'), {once:true}); }
+  renderOtherHabits();
+  renderWeek();
+  renderHeader();
+  renderStats();
+}
+
+function updateTodayStats() {
+  const key = todayKey();
+  const day = getDay(key);
+  const sportDone = SPORT_HABITS.filter(h => day.sport[h.id]).length;
+  const otherDone = OTHER_HABITS.filter(h => day.habits[h.id]).length;
+  const total = ALL_HABITS.length;
+  const done = sportDone + otherDone;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-pct').textContent = Math.round(done/total*100) + '%';
+}
+
+// ══════════════════════════════════════════
+// NOTES
+// ══════════════════════════════════════════
+function renderNotes() {
+  const key = todayKey();
+  const day = getDay(key);
+  const list = document.getElementById('notes-list');
+  const label = document.getElementById('notes-label');
+  list.innerHTML = '';
+  if (!day.notes || day.notes.length === 0) { label.style.display='none'; return; }
+  label.style.display='block';
+  [...day.notes].reverse().forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'note-entry fade-in';
+    el.innerHTML = `<div class="note-dot"></div><div><div class="note-text">${n.text}</div><div class="note-time">${n.time}</div></div>`;
+    list.appendChild(el);
+  });
+}
+function addNote() {
+  const inp = document.getElementById('note-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  const key = todayKey();
+  const day = getDay(key);
+  if (!day.notes) day.notes = [];
+  const now = new Date();
+  day.notes.push({ text, time: now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')+' Uhr' });
+  saveDay(key, day);
+  inp.value = '';
+  renderNotes();
+}
+
+// ══════════════════════════════════════════
+// KETO
+// ══════════════════════════════════════════
+function setKetoLevel(cat, val, btn) {
+  const key = todayKey();
+  const day = getDay(key);
+  if (!day.keto) day.keto = {};
+  // toggle off if same
+  day.keto[cat] = day.keto[cat] === val ? null : val;
+  saveDay(key, day);
+  const btns = document.querySelectorAll(`.keto-card[data-cat="${cat}"] .level-btn`);
+  btns.forEach(b => { b.className = 'level-btn'; if (b.dataset.val === day.keto[cat]) b.classList.add('active-' + day.keto[cat]); });
+  const el = document.getElementById('kv-' + cat);
+  const v = day.keto[cat];
+  el.textContent = v ? LEVEL_LABELS[v] : '—';
+  el.className = 'k-val' + (v ? ' '+ketoColor(cat,v) : '');
+  updateKetoStatus();
+}
+
+function updateKetoStatus() {
+  const key = todayKey();
+  const day = getDay(key);
+  const keto = day.keto || {};
+  const banner = document.getElementById('keto-status-banner');
+  const set = Object.values(keto).filter(Boolean).length;
+  if (set === 0) { banner.style.display='none'; return; }
+  let score = 0;
+  if (keto.protein === 'high') score += 2; else if (keto.protein === 'mid') score += 1;
+  if (keto.carbs === 'low') score += 2; else if (keto.carbs === 'mid') score += 1;
+  if (keto.calories === 'high') score += 2; else if (keto.calories === 'mid') score += 1;
+  if (keto.health === 'high') score += 2; else if (keto.health === 'mid') score += 1;
+  banner.style.display = 'flex';
+  if (score >= 6) {
+    banner.className = 'keto-status good';
+    banner.innerHTML = '<i class="fa-solid fa-circle-check"></i> Starker Keto-Tag — Ziele erreicht!';
+  } else if (score >= 3) {
+    banner.className = 'keto-status warn';
+    banner.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Geht so — Protein oder KH prüfen';
+  } else {
+    banner.className = 'keto-status bad';
+    banner.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Keto-Ziele heute verfehlt';
+  }
+}
+
+function loadKetoScreen() {
+  const key = todayKey();
+  const day = getDay(key);
+  const keto = day.keto || {};
+  ['protein','carbs','calories','health'].forEach(cat => {
+    const val = keto[cat];
+    const btns = document.querySelectorAll(`.keto-card[data-cat="${cat}"] .level-btn`);
+    btns.forEach(b => { b.className = 'level-btn'; if (val && b.dataset.val === val) b.classList.add('active-'+val); });
+    const el = document.getElementById('kv-'+cat);
+    el.textContent = val ? LEVEL_LABELS[val] : '—';
+    el.className = 'k-val' + (val ? ' '+ketoColor(cat,val) : '');
+  });
+  updateKetoStatus();
+  loadFasting();
+  renderMeals();
+}
+
+// ══════════════════════════════════════════
+// FASTING WINDOW
+// ══════════════════════════════════════════
+function saveFasting(val) {
+  const h = parseFloat(val);
+  const key = todayKey();
+  const day = getDay(key);
+  day.fasting = isNaN(h) ? null : h;
+  saveDay(key, day);
+  updateFastingBadge(day.fasting);
+}
+
+function updateFastingBadge(h) {
+  const badge = document.getElementById('fast-badge');
+  if (!badge) return;
+  if (h === null || h === undefined || h === '') { badge.innerHTML = ''; return; }
+  let color, label;
+  if (h >= 16)      { color = 'var(--accent)';  label = h+'h ✓'; }
+  else if (h >= 12) { color = 'var(--amber)';   label = h+'h'; }
+  else              { color = 'var(--text2)';    label = h+'h'; }
+  badge.innerHTML = `<span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${color};">${label}</span>`;
+}
+
+function loadFasting() {
+  const key = todayKey();
+  const day = getDay(key);
+  const inp = document.getElementById('fast-input');
+  if (inp) inp.value = day.fasting != null ? day.fasting : '';
+  updateFastingBadge(day.fasting);
+}
+
+// ══════════════════════════════════════════
+// MEALS — Breakfast / Lunch / Dinner
+// ══════════════════════════════════════════
+const MEAL_SLOTS = [
+  { id:'breakfast', label:'Frühstück', icon:'🌅', placeholder:'z.B. Rührei mit Avocado' },
+  { id:'lunch',     label:'Mittagessen', icon:'☀️', placeholder:'z.B. Lachs mit Brokkoli' },
+  { id:'dinner',    label:'Abendessen', icon:'🌙', placeholder:'z.B. Steak mit Salat' },
+];
+
+function pillClass(dim, val) {
+  if (!val) return '';
+  if (dim==='carbs') return val==='low'?'carbs-low':val==='high'?'carbs-high':'mid';
+  if (dim==='calories') return val==='high'?'high':val==='mid'?'mid':'low';
+  return val==='high'?'high':val==='mid'?'mid':'low';
+}
+
+function renderMeals() {
+  const key = todayKey();
+  const day = getDay(key);
+  if (!day.meals2) day.meals2 = {};
+  const container = document.getElementById('meals-sections');
+  container.innerHTML = '';
+
+  MEAL_SLOTS.forEach(slot => {
+    const data = day.meals2[slot.id] || null;
+    const isSkipped = data && data.skipped;
+    const hasMeal = data && !data.skipped && data.name;
+
+    const card = document.createElement('div');
+    card.className = 'add-meal-card';
+    card.style.marginBottom = '10px';
+
+    // Header row
+    let statusHtml = '';
+    if (isSkipped) {
+      statusHtml = `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text2);background:var(--bg3);border:0.5px solid var(--border);border-radius:5px;padding:3px 8px;">Meal Skip</span>`;
+    } else if (hasMeal) {
+      const pills = [
+        data.protein ? `<span class="meal-pill ${pillClass('protein',data.protein)}">P: ${LEVEL_LABELS[data.protein]}</span>` : '',
+        data.carbs   ? `<span class="meal-pill ${pillClass('carbs',data.carbs)}">KH: ${LEVEL_LABELS[data.carbs]}</span>` : '',
+        data.calories? `<span class="meal-pill ${pillClass('calories',data.calories)}">Kcal: ${LEVEL_LABELS[data.calories]}</span>` : '',
+        data.health  ? `<span class="meal-pill ${pillClass('health',data.health)}">G: ${LEVEL_LABELS[data.health]}</span>` : '',
+      ].filter(Boolean).join('');
+      statusHtml = `<div style="display:flex;flex-direction:column;gap:3px;"><div style="font-size:12px;font-weight:600;color:var(--text0);">${data.name}</div><div class="meal-pills">${pills}</div></div>`;
+    }
+
+    if (hasMeal || isSkipped) {
+      // Compact logged view
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">${slot.icon}</span>
+            <div>
+              <div style="font-family:var(--font-mono);font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">${slot.label}</div>
+              ${statusHtml}
+            </div>
+          </div>
+          <button onclick="clearMealSlot('${slot.id}')" style="background:none;border:0.5px solid var(--border-med);border-radius:7px;padding:5px 9px;font-size:10px;color:var(--text2);cursor:pointer;font-family:var(--font-mono);flex-shrink:0;">✕</button>
+        </div>`;
+    } else {
+      // Input form
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:16px;">${slot.icon}</span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;">${slot.label}</span>
+        </div>
+        <div class="form-label">Was hast du gegessen?</div>
+        <input class="form-input" id="meal-input-${slot.id}" type="text" placeholder="${slot.placeholder}" style="margin-bottom:10px;">
+        <div class="form-label">Zielerfüllung</div>
+        <div class="form-levels" style="margin-bottom:10px;">
+          ${['protein','carbs','calories','health'].map((dim,i) => {
+            const labels = ['Protein','KH','Kcal','Gesund'];
+            return `<div class="form-level-group">
+              <div class="form-level-label">${labels[i]}</div>
+              <div class="form-level-btns">
+                <div class="form-level-btn" data-slot="${slot.id}" data-dim="${dim}" data-val="high" onclick="selectSlotLevel('${slot.id}','${dim}','high',this)">Hoch</div>
+                <div class="form-level-btn" data-slot="${slot.id}" data-dim="${dim}" data-val="mid"  onclick="selectSlotLevel('${slot.id}','${dim}','mid',this)">Mittel</div>
+                <div class="form-level-btn" data-slot="${slot.id}" data-dim="${dim}" data-val="low"  onclick="selectSlotLevel('${slot.id}','${dim}','low',this)">Gering</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="note-submit" style="flex:1;" onclick="saveMealSlot('${slot.id}')">Speichern</button>
+          <button onclick="skipMealSlot('${slot.id}')" style="background:var(--bg3);border:0.5px solid var(--border-med);border-radius:var(--radius-md);padding:12px 14px;font-family:var(--font-head);font-size:13px;color:var(--text2);cursor:pointer;white-space:nowrap;">Meal Skip</button>
+        </div>`;
+    }
+    container.appendChild(card);
+  });
+}
+
+// per-slot temp state
+const slotForms = { breakfast:{}, lunch:{}, dinner:{} };
+
+function selectSlotLevel(slotId, dim, val, btn) {
+  if (!slotForms[slotId]) slotForms[slotId] = {};
+  slotForms[slotId][dim] = slotForms[slotId][dim]===val ? null : val;
+  document.querySelectorAll(`.form-level-btn[data-slot="${slotId}"][data-dim="${dim}"]`).forEach(b => {
+    b.className = 'form-level-btn';
+    if (b.dataset.val === slotForms[slotId][dim]) b.classList.add('sel-'+slotForms[slotId][dim]);
+  });
+}
+
+function saveMealSlot(slotId) {
+  const inp = document.getElementById('meal-input-'+slotId);
+  const name = inp ? inp.value.trim() : '';
+  if (!name) { alert('Bitte Mahlzeit benennen'); return; }
+  const key = todayKey();
+  const day = getDay(key);
+  if (!day.meals2) day.meals2 = {};
+  const sf = slotForms[slotId] || {};
+  day.meals2[slotId] = { name, protein:sf.protein||null, carbs:sf.carbs||null, calories:sf.calories||null, health:sf.health||null };
+  saveDay(key, day);
+  slotForms[slotId] = {};
+  renderMeals();
+}
+
+function skipMealSlot(slotId) {
+  const key = todayKey();
+  const day = getDay(key);
+  if (!day.meals2) day.meals2 = {};
+  day.meals2[slotId] = { skipped: true };
+  saveDay(key, day);
+  renderMeals();
+}
+
+function clearMealSlot(slotId) {
+  const key = todayKey();
+  const day = getDay(key);
+  if (!day.meals2) day.meals2 = {};
+  delete day.meals2[slotId];
+  saveDay(key, day);
+  slotForms[slotId] = {};
+  renderMeals();
+}
+
+// ══════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════
+function renderStats() {
+  const streak = calcStreak();
+  document.getElementById('sv-streak').textContent = streak;
+  document.getElementById('sv-best').textContent = calcBestStreak();
+  document.getElementById('sv-days').textContent = countActiveDays();
+  // week avg
+  let weekTotal = 0;
+  const today = new Date();
+  for (let i=0;i<7;i++) {
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    const day = getDay(d.toISOString().split('T')[0]);
+    const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
+    weekTotal += done/ALL_HABITS.length;
+  }
+  document.getElementById('sv-week').textContent = Math.round(weekTotal/7*100)+'%';
+  renderBarChart();
+  renderHabitBreakdown();
+  renderStreakGrid();
+}
+
+function renderBarChart() {
+  const chart = document.getElementById('bar-chart');
+  chart.innerHTML = '';
+  const today = new Date();
+  const dayNames = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  const maxH = 72;
+  for (let i=6;i>=0;i--) {
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    const key = d.toISOString().split('T')[0];
+    const day = getDay(key);
+    const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
+    const pct = done/ALL_HABITS.length;
+    const h = Math.max(3, Math.round(pct*maxH));
+    const isToday = i===0;
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    col.innerHTML = `<div class="bar${done>0?' done':''}" style="height:${h}px;opacity:${isToday?1:0.6};"></div><div class="bar-lbl${isToday?' today':''}">${dayNames[d.getDay()]}</div>`;
+    chart.appendChild(col);
+  }
+}
+
+function renderHabitBreakdown() {
+  const container = document.getElementById('habit-breakdown');
+  container.innerHTML = '';
+  const today = new Date();
+  ALL_HABITS.forEach(h => {
+    let count = 0;
+    for (let i=0;i<7;i++) {
+      const d = new Date(today); d.setDate(today.getDate()-i);
+      const day = getDay(d.toISOString().split('T')[0]);
+      if (day.habits[h.id] || day.sport[h.id]) count++;
+    }
+    const pct = count/7;
+    const color = pct>=0.7?'var(--accent)':pct>=0.4?'var(--amber)':'var(--red)';
+    const row = document.createElement('div');
+    row.className = 'prog-item';
+    row.innerHTML = `
+      <div class="prog-lbl">${h.icon} ${h.name}</div>
+      <div class="prog-bg"><div class="prog-fill" style="width:${Math.round(pct*100)}%;background:${color};"></div></div>
+      <div class="prog-val">${count}/7</div>`;
+    container.appendChild(row);
+  });
+}
+
+function renderStreakGrid() {
+  const grid = document.getElementById('streak-grid');
+  grid.innerHTML = '';
+  const today = new Date();
+  for (let i=27;i>=0;i--) {
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    const key = d.toISOString().split('T')[0];
+    const day = getDay(key);
+    const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
+    const pct = done/ALL_HABITS.length;
+    const cls = pct>=0.75?'l3':pct>=0.4?'l2':pct>0?'l1':'';
+    const cell = document.createElement('div');
+    cell.className = 'streak-cell'+(cls?' '+cls:'');
+    grid.appendChild(cell);
+  }
+}
+
+function calcStreak() {
+  let streak=0;
+  const today = new Date();
+  for (let i=0;i<365;i++) {
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    const day = getDay(d.toISOString().split('T')[0]);
+    const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
+    if (done>0) streak++; else if (i>0) break;
+  }
+  return streak;
+}
+function calcBestStreak() {
+  let best=0, cur=0;
+  const today = new Date();
+  for (let i=364;i>=0;i--) {
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    const day = getDay(d.toISOString().split('T')[0]);
+    const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
+    if (done>0) { cur++; best=Math.max(best,cur); } else cur=0;
+  }
+  return best;
+}
+function countActiveDays() {
+  const s = loadState();
+  if (!s.days) return 0;
+  return Object.values(s.days).filter(d =>
+    ALL_HABITS.some(h => (d.habits&&d.habits[h.id])||(d.sport&&d.sport[h.id]))
+  ).length;
+}
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function showScreen(name, navEl) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  navEl.classList.add('active');
+  if (name==='keto') loadKetoScreen();
+  if (name==='stats') renderStats();
+}
+
+// ══════════════════════════════════════════
+// WHOOP OAUTH + API
+// ══════════════════════════════════════════
+
+function whoopConnect() {
+  const state = Math.random().toString(36).substring(2);
+  localStorage.setItem('whoop_oauth_state', state);
+  const params = new URLSearchParams({
+    client_id: WHOOP_CLIENT_ID,
+    redirect_uri: WHOOP_REDIRECT_URI,
+    response_type: 'code',
+    scope: WHOOP_SCOPES,
+    state
+  });
+  window.location.href = 'https://api.prod.whoop.com/oauth/oauth2/auth?' + params.toString();
+}
+
+function whoopDisconnect() {
+  localStorage.removeItem('whoop_tokens');
+  localStorage.removeItem('whoop_data');
+  renderWhoopBlock();
+  updateWhoopSettings();
+}
+
+function getWhoopTokens() {
+  try { return JSON.parse(localStorage.getItem('whoop_tokens') || 'null'); } catch(e) { return null; }
+}
+function saveWhoopTokens(t) { localStorage.setItem('whoop_tokens', JSON.stringify(t)); }
+function getWhoopData()   { try { return JSON.parse(localStorage.getItem('whoop_data') || 'null'); } catch(e) { return null; } }
+function saveWhoopData(d) { localStorage.setItem('whoop_data', JSON.stringify(d)); }
+
+async function whoopExchangeCode(code) {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: WHOOP_REDIRECT_URI,
+    client_id: WHOOP_CLIENT_ID,
+    client_secret: WHOOP_CLIENT_SECRET,
+  });
+  const res = await fetch('https://api.prod.whoop.com/oauth/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  if (!res.ok) throw new Error('Token exchange failed');
+  return res.json();
+}
+
+async function whoopRefreshToken() {
+  const tokens = getWhoopTokens();
+  if (!tokens?.refresh_token) return null;
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: tokens.refresh_token,
+    client_id: WHOOP_CLIENT_ID,
+    client_secret: WHOOP_CLIENT_SECRET,
+  });
+  const res = await fetch('https://api.prod.whoop.com/oauth/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  if (!res.ok) { whoopDisconnect(); return null; }
+  const fresh = await res.json();
+  saveWhoopTokens(fresh);
+  return fresh;
+}
+
+async function whoopFetch(path) {
+  let tokens = getWhoopTokens();
+  if (!tokens) return null;
+  // refresh if expiring within 5 min
+  if (tokens.expires_at && Date.now() > tokens.expires_at - 300000) {
+    tokens = await whoopRefreshToken();
+    if (!tokens) return null;
+  }
+  const res = await fetch('https://api.prod.whoop.com/developer/v1' + path, {
+    headers: { Authorization: 'Bearer ' + tokens.access_token }
+  });
+  if (res.status === 401) { await whoopRefreshToken(); return null; }
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function whoopSync() {
+  const tokens = getWhoopTokens();
+  if (!tokens) return;
+  updateSyncStatus('syncing');
+  try {
+    // Fetch latest recovery (contains sleep + HRV + RHR)
+    const recoveryData = await whoopFetch('/recovery?limit=1');
+    const cycleData    = await whoopFetch('/cycle?limit=1');
+
+    const rec = recoveryData?.records?.[0];
+    const cyc = cycleData?.records?.[0];
+
+    const data = {
+      synced_at: Date.now(),
+      recovery_score: rec?.score?.recovery_score ?? null,
+      hrv_rmssd: rec?.score?.hrv_rmssd_milli ? Math.round(rec.score.hrv_rmssd_milli) : null,
+      rhr: rec?.score?.resting_heart_rate ?? null,
+      sleep_duration_min: rec?.sleep?.sleep_performance_percentage
+        ? null
+        : null,
+      strain: cyc?.score?.strain ? Math.round(cyc.score.strain * 10) / 10 : null,
+      // sleep from sleep endpoint
+    };
+
+    // also fetch sleep
+    const sleepData = await whoopFetch('/activity/sleep?limit=1');
+    const sl = sleepData?.records?.[0];
+    if (sl?.score?.stage_summary?.total_in_bed_time_milli) {
+      data.sleep_min = Math.round(sl.score.stage_summary.total_in_bed_time_milli / 60000);
+    }
+
+    saveWhoopData(data);
+    updateSyncStatus('ok');
+    renderWhoopBlock();
+    updateWhoopSettings();
+  } catch(e) {
+    updateSyncStatus('error');
+  }
+}
+
+function updateSyncStatus(state) {
+  const el = document.getElementById('whoop-sync-status');
+  if (!el) return;
+  if (state === 'syncing') { el.textContent = 'Syncing…'; el.style.color = 'var(--text2)'; }
+  else if (state === 'ok') {
+    const d = getWhoopData();
+    const t = d?.synced_at ? new Date(d.synced_at) : null;
+    el.textContent = t ? 'Sync ' + t.getHours()+':'+String(t.getMinutes()).padStart(2,'0') : 'Verbunden';
+    el.style.color = 'rgba(96,184,240,0.6)';
+  }
+  else if (state === 'error') { el.textContent = 'Sync Fehler'; el.style.color = 'var(--red)'; }
+}
+
+function renderWhoopBlock() {
+  const tokens = getWhoopTokens();
+  const data   = getWhoopData();
+  const content = document.getElementById('whoop-today-content');
+  const hint    = document.getElementById('whoop-connect-hint');
+  if (!content) return;
+
+  if (!tokens) {
+    content.innerHTML = `<div class="whoop-coming"><span>Nicht verbunden — </span><span onclick="whoopConnect()" style="color:var(--blue);cursor:pointer;text-decoration:underline;">WHOOP verbinden</span></div>`;
+    const sb = document.getElementById('whoop-sync-status');
+    if (sb) sb.textContent = '—';
+    return;
+  }
+
+  if (!data) {
+    content.innerHTML = `<div class="whoop-coming" style="color:var(--text2);">Verbunden · Lade Daten…</div>`;
+    whoopSync();
+    return;
+  }
+
+  // Build metric display
+  const fmtRecovery = (v) => v !== null ? v+'%' : '—';
+  const fmtHRV      = (v) => v !== null ? v+'ms' : '—';
+  const fmtRHR      = (v) => v !== null ? v+' bpm' : '—';
+  const fmtStrain   = (v) => v !== null ? v : '—';
+  const fmtSleep    = (v) => { if (!v) return '—'; const h=Math.floor(v/60), m=v%60; return h+'h'+String(m).padStart(2,'0'); };
+
+  const recColor = data.recovery_score >= 67 ? 'var(--accent)' : data.recovery_score >= 34 ? 'var(--amber)' : 'var(--red)';
+
+  content.innerHTML = `
+    <div class="whoop-grid">
+      <div class="whoop-metric">
+        <div class="wv" style="color:${recColor};">${fmtRecovery(data.recovery_score)}</div>
+        <div class="wl">Recovery</div>
+      </div>
+      <div class="whoop-metric">
+        <div class="wv">${fmtSleep(data.sleep_min)}</div>
+        <div class="wl">Schlaf</div>
+      </div>
+      <div class="whoop-metric">
+        <div class="wv">${fmtHRV(data.hrv_rmssd)}</div>
+        <div class="wl">HRV</div>
+      </div>
+      <div class="whoop-metric">
+        <div class="wv">${fmtStrain(data.strain)}</div>
+        <div class="wl">Strain</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-family:var(--font-mono);font-size:9px;color:rgba(96,184,240,0.4);">RHR ${fmtRHR(data.rhr)}</span>
+      <span onclick="whoopSync()" style="font-family:var(--font-mono);font-size:9px;color:var(--blue);cursor:pointer;">↻ Aktualisieren</span>
+    </div>`;
+
+  updateSyncStatus('ok');
+}
+
+function updateWhoopSettings() {
+  const tokens = getWhoopTokens();
+  const sub    = document.getElementById('whoop-settings-sub');
+  const badge  = document.getElementById('whoop-settings-badge');
+  const row    = document.getElementById('whoop-settings-row');
+  if (!sub || !badge) return;
+  if (tokens) {
+    sub.textContent = 'Verbunden · automatischer Sync';
+    badge.textContent = 'Trennen';
+    badge.style.background = 'var(--red-dim)';
+    badge.style.color = 'var(--red)';
+    badge.style.borderColor = 'rgba(255,107,107,0.3)';
+    row.onclick = () => { if(confirm('WHOOP trennen?')) whoopDisconnect(); };
+  } else {
+    sub.textContent = 'Nicht verbunden';
+    badge.textContent = 'Verbinden';
+    badge.style.background = 'var(--blue-dim)';
+    badge.style.color = 'var(--blue)';
+    badge.style.borderColor = 'rgba(96,184,240,0.3)';
+    row.onclick = whoopConnect;
+  }
+}
+
+// Handle OAuth callback (code in URL)
+function handleOAuthCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code  = params.get('code');
+  const state = params.get('state');
+  if (!code) return false;
+  const savedState = localStorage.getItem('whoop_oauth_state');
+  if (state !== savedState) { alert('OAuth state mismatch – bitte nochmal verbinden.'); return false; }
+  localStorage.removeItem('whoop_oauth_state');
+  // Exchange code for token
+  whoopExchangeCode(code).then(tokens => {
+    tokens.expires_at = Date.now() + (tokens.expires_in || 3600) * 1000;
+    saveWhoopTokens(tokens);
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+    whoopSync();
+    renderWhoopBlock();
+    updateWhoopSettings();
+  }).catch(e => {
+    alert('WHOOP Verbindung fehlgeschlagen: ' + e.message);
+  });
+  return true;
+}
+
+// ══════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════
+function exportData() {
+  const s = loadState();
+  const blob = new Blob([JSON.stringify(s,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tracker-export-'+todayKey()+'.json';
+  a.click();
+}
+function clearData() { localStorage.removeItem('tracker_v2'); location.reload(); }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  }
+</script>
+</body>
+</html>

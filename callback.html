@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitCore · WHOOP verbinden…</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a09; color: #f0ede6; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; gap: 16px; }
+    .msg { font-size: 16px; color: #60b8f0; }
+    .sub { font-size: 12px; color: #5c5a55; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div class="msg">⌚ WHOOP wird verbunden…</div>
+  <div class="sub">Du wirst gleich weitergeleitet</div>
+  <script>
+    // Forward all URL params back to main app index
+    const params = window.location.search;
+    window.location.replace('index.html' + params);
+  </script>
+</body>
+</html>
