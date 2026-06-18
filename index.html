@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0057)file:///C:/Users/Florian%20Fiedler/Downloads/index_4.html -->
+<!-- saved from url=(0057)file:///C:/Users/Florian%20Fiedler/Downloads/index_5.html -->
 <html lang="de"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -217,7 +217,7 @@
   <div class="screen active" id="screen-today">
     <div class="page-header">
       <div>
-        <h1 id="greeting">Guten Morgen 🌅</h1>
+        <h1 id="greeting">Hallo 👋</h1>
         <div class="date" id="today-date">Donnerstag, 18. Jun</div>
       </div>
       <div class="streak-pill">
@@ -560,8 +560,8 @@ const LEVEL_LABELS = { high:'Hoch', mid:'Mittel', low:'Gering' };
 // ══════════════════════════════════════════
 // WHOOP CONFIG — trag hier deine Werte ein
 // ══════════════════════════════════════════
-const WHOOP_CLIENT_ID     = '8de6a296-90d8-4619-a255-00ba5aea0181';
-const WHOOP_CLIENT_SECRET = '4ae5de701e09369b65250d3aa9315f868f49bcafbbf2df845a2e4206c8637f68';
+const WHOOP_CLIENT_ID     = 'DEINE_CLIENT_ID';
+const WHOOP_PROXY_URL     = 'https://fitcore-whoop-proxy.fitcore88.workers.dev';
 const WHOOP_REDIRECT_URI  = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/') + 'callback.html';
 const WHOOP_SCOPES        = 'read:recovery read:cycles read:sleep read:workout read:body_measurement offline';
 
@@ -1211,17 +1211,10 @@ function getWhoopData()   { try { return JSON.parse(localStorage.getItem('whoop_
 function saveWhoopData(d) { localStorage.setItem('whoop_data', JSON.stringify(d)); }
 
 async function whoopExchangeCode(code) {
-  const body = new URLSearchParams({
-    grant_type: 'authorization_code',
-    code,
-    redirect_uri: WHOOP_REDIRECT_URI,
-    client_id: WHOOP_CLIENT_ID,
-    client_secret: WHOOP_CLIENT_SECRET,
-  });
-  const res = await fetch('https://api.prod.whoop.com/oauth/oauth2/token', {
+  const res = await fetch(WHOOP_PROXY_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ grant_type: 'authorization_code', code })
   });
   if (!res.ok) throw new Error('Token exchange failed');
   return res.json();
@@ -1230,16 +1223,10 @@ async function whoopExchangeCode(code) {
 async function whoopRefreshToken() {
   const tokens = getWhoopTokens();
   if (!tokens?.refresh_token) return null;
-  const body = new URLSearchParams({
-    grant_type: 'refresh_token',
-    refresh_token: tokens.refresh_token,
-    client_id: WHOOP_CLIENT_ID,
-    client_secret: WHOOP_CLIENT_SECRET,
-  });
-  const res = await fetch('https://api.prod.whoop.com/oauth/oauth2/token', {
+  const res = await fetch(WHOOP_PROXY_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: tokens.refresh_token })
   });
   if (!res.ok) { whoopDisconnect(); return null; }
   const fresh = await res.json();
