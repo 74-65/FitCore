@@ -1,5 +1,5 @@
 // Version bump erzwingt Cache-Invalidierung bei allen Clients
-const CACHE = 'fitcore-v2';
+const CACHE = 'fitcore-v3';
 const ASSETS = [
   '/FitCore/',
   '/FitCore/index.html',

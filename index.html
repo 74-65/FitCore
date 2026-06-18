@@ -1,21 +1,20 @@
 <!DOCTYPE html>
-<!-- saved from url=(0058)file:///C:/Users/Florian%20Fiedler/Downloads/index_12.html -->
-<html lang="de"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FitCore">
   <meta name="theme-color" content="#0a0a09">
   <title>FitCore</title>
-  <link rel="manifest" href="file:///C:/Users/Florian%20Fiedler/Downloads/manifest.json">
-  <link rel="apple-touch-icon" href="file:///C:/Users/Florian%20Fiedler/Downloads/icon-192.png">
-  <link rel="apple-touch-icon" sizes="192x192" href="file:///C:/Users/Florian%20Fiedler/Downloads/icon-192.png">
-  <link rel="apple-touch-icon" sizes="512x512" href="file:///C:/Users/Florian%20Fiedler/Downloads/icon-512.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com/">
-  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
-  <link href="./index_files/css2" rel="stylesheet">
-  <link rel="stylesheet" href="./index_files/all.min.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     :root {
       --bg0: #0a0a09; --bg1: #131312; --bg2: #1a1a18; --bg3: #222220;
@@ -221,7 +220,7 @@
     <div class="page-header">
       <div>
         <h1 id="greeting">Hallo 👋</h1>
-        <div class="date" id="today-date">Donnerstag, 18. Jun</div>
+        <div class="date" id="today-date"></div>
       </div>
       <div class="streak-pill">
         <i class="fa-solid fa-fire"></i>
@@ -236,35 +235,7 @@
       <div class="stat-card"><div class="val a" id="stat-streak2">0</div><div class="lbl">streak</div></div>
     </div>
 
-    <div class="week-row" id="week-row"><div class="week-day">
-      <div class="week-dot">
-        
-      </div>
-      <div class="week-label">Fr</div></div><div class="week-day">
-      <div class="week-dot">
-        
-      </div>
-      <div class="week-label">Sa</div></div><div class="week-day">
-      <div class="week-dot">
-        
-      </div>
-      <div class="week-label">So</div></div><div class="week-day">
-      <div class="week-dot">
-        
-      </div>
-      <div class="week-label">Mo</div></div><div class="week-day">
-      <div class="week-dot">
-        
-      </div>
-      <div class="week-label">Di</div></div><div class="week-day">
-      <div class="week-dot">
-        
-      </div>
-      <div class="week-label">Mi</div></div><div class="week-day">
-      <div class="week-dot today">
-        ·
-      </div>
-      <div class="week-label today">Do</div></div></div>
+    <div class="week-row" id="week-row"></div>
 
     <div class="section-label">WHOOP</div>
     <div class="whoop-block" id="whoop-today-block">
@@ -272,65 +243,19 @@
         <div class="whoop-title">⌚ Heute</div>
         <div id="whoop-sync-status" class="whoop-badge">—</div>
       </div>
-      <div id="whoop-today-content"><div class="whoop-coming"><span>Nicht verbunden — </span><span onclick="whoopConnect()" style="color:var(--blue);cursor:pointer;text-decoration:underline;">WHOOP verbinden</span></div></div>
+      <div id="whoop-today-content">
+        <div class="whoop-coming" id="whoop-connect-hint">
+          <span id="whoop-hint-text">Nicht verbunden — </span>
+          <span onclick="whoopConnect()" style="color:var(--blue);cursor:pointer;text-decoration:underline;">WHOOP verbinden</span>
+        </div>
+      </div>
     </div>
 
     <div class="section-label">Sport</div>
-    <div class="habits-list" id="sport-list"><div class="habit-card" id="scard-tennis">
-      <div class="habit-icon">🎾</div>
-      <div class="habit-info" style="flex:1;">
-        <div class="habit-name">Tennis</div>
-        <div class="habit-sub" id="ssub-tennis">Gespielt oder trainiert</div>
-        
-      </div>
-      <div class="habit-check" id="scheck-tennis">
-        
-      </div></div><div class="habit-card" id="scard-kraft">
-      <div class="habit-icon">🏋️</div>
-      <div class="habit-info" style="flex:1;">
-        <div class="habit-name">Krafttraining</div>
-        <div class="habit-sub" id="ssub-kraft">Gym oder Zuhause</div>
-        
-      </div>
-      <div class="habit-check" id="scheck-kraft">
-        
-      </div></div><div class="habit-card" id="scard-cardio">
-      <div class="habit-icon">🫀</div>
-      <div class="habit-info" style="flex:1;">
-        <div class="habit-name">Cardio</div>
-        <div class="habit-sub" id="ssub-cardio">Laufen, Rad, etc.</div>
-        
-      </div>
-      <div class="habit-check" id="scheck-cardio">
-        
-      </div></div></div>
+    <div class="habits-list" id="sport-list"></div>
 
     <div class="section-label">Habits</div>
-    <div class="habits-list" id="habits-list"><div class="habit-card" id="hcard-lesen">
-      <div class="habit-icon">📚</div>
-      <div class="habit-info">
-        <div class="habit-name">Lesen</div>
-        <div class="habit-sub">Mind. 30 min</div>
-      </div>
-      <div class="habit-check" id="hcheck-lesen">
-        
-      </div></div><div class="habit-card" id="hcard-wasser">
-      <div class="habit-icon">💧</div>
-      <div class="habit-info">
-        <div class="habit-name">Wasser</div>
-        <div class="habit-sub">Ausreichend getrunken</div>
-      </div>
-      <div class="habit-check" id="hcheck-wasser">
-        
-      </div></div><div class="habit-card" id="hcard-schlaf">
-      <div class="habit-icon">😴</div>
-      <div class="habit-info">
-        <div class="habit-name">Gut geschlafen</div>
-        <div class="habit-sub">Erholsame Nacht</div>
-      </div>
-      <div class="habit-check" id="hcheck-schlaf">
-        
-      </div></div></div>
+    <div class="habits-list" id="habits-list"></div>
 
     <div class="divider"></div>
     <div class="section-label">Notiz</div>
@@ -360,9 +285,9 @@
         <div class="k-goal">Ziel: 150g</div>
         <div class="k-val" id="kv-protein">—</div>
         <div class="level-row">
-          <div class="level-btn" data-cat="protein" data-val="high" onclick="setKetoLevel(&#39;protein&#39;,&#39;high&#39;,this)">Hoch</div>
-          <div class="level-btn" data-cat="protein" data-val="mid" onclick="setKetoLevel(&#39;protein&#39;,&#39;mid&#39;,this)">Mittel</div>
-          <div class="level-btn" data-cat="protein" data-val="low" onclick="setKetoLevel(&#39;protein&#39;,&#39;low&#39;,this)">Gering</div>
+          <div class="level-btn" data-cat="protein" data-val="high" onclick="setKetoLevel('protein','high',this)">Hoch</div>
+          <div class="level-btn" data-cat="protein" data-val="mid"  onclick="setKetoLevel('protein','mid',this)">Mittel</div>
+          <div class="level-btn" data-cat="protein" data-val="low"  onclick="setKetoLevel('protein','low',this)">Gering</div>
         </div>
       </div>
       <div class="keto-card" data-cat="carbs">
@@ -371,9 +296,9 @@
         <div class="k-goal">Ziel: &lt;20g</div>
         <div class="k-val" id="kv-carbs">—</div>
         <div class="level-row">
-          <div class="level-btn" data-cat="carbs" data-val="high" onclick="setKetoLevel(&#39;carbs&#39;,&#39;high&#39;,this)">Hoch</div>
-          <div class="level-btn" data-cat="carbs" data-val="mid" onclick="setKetoLevel(&#39;carbs&#39;,&#39;mid&#39;,this)">Mittel</div>
-          <div class="level-btn" data-cat="carbs" data-val="low" onclick="setKetoLevel(&#39;carbs&#39;,&#39;low&#39;,this)">Gering</div>
+          <div class="level-btn" data-cat="carbs" data-val="high" onclick="setKetoLevel('carbs','high',this)">Hoch</div>
+          <div class="level-btn" data-cat="carbs" data-val="mid"  onclick="setKetoLevel('carbs','mid',this)">Mittel</div>
+          <div class="level-btn" data-cat="carbs" data-val="low"  onclick="setKetoLevel('carbs','low',this)">Gering</div>
         </div>
       </div>
       <div class="keto-card" data-cat="calories">
@@ -382,9 +307,9 @@
         <div class="k-goal">Ziel: −500 kcal</div>
         <div class="k-val" id="kv-calories">—</div>
         <div class="level-row">
-          <div class="level-btn" data-cat="calories" data-val="high" onclick="setKetoLevel(&#39;calories&#39;,&#39;high&#39;,this)">Hoch</div>
-          <div class="level-btn" data-cat="calories" data-val="mid" onclick="setKetoLevel(&#39;calories&#39;,&#39;mid&#39;,this)">Mittel</div>
-          <div class="level-btn" data-cat="calories" data-val="low" onclick="setKetoLevel(&#39;calories&#39;,&#39;low&#39;,this)">Gering</div>
+          <div class="level-btn" data-cat="calories" data-val="high" onclick="setKetoLevel('calories','high',this)">Hoch</div>
+          <div class="level-btn" data-cat="calories" data-val="mid"  onclick="setKetoLevel('calories','mid',this)">Mittel</div>
+          <div class="level-btn" data-cat="calories" data-val="low"  onclick="setKetoLevel('calories','low',this)">Gering</div>
         </div>
       </div>
       <div class="keto-card" data-cat="health">
@@ -393,9 +318,9 @@
         <div class="k-goal">Lebensmittelqualität</div>
         <div class="k-val" id="kv-health">—</div>
         <div class="level-row">
-          <div class="level-btn" data-cat="health" data-val="high" onclick="setKetoLevel(&#39;health&#39;,&#39;high&#39;,this)">Hoch</div>
-          <div class="level-btn" data-cat="health" data-val="mid" onclick="setKetoLevel(&#39;health&#39;,&#39;mid&#39;,this)">Mittel</div>
-          <div class="level-btn" data-cat="health" data-val="low" onclick="setKetoLevel(&#39;health&#39;,&#39;low&#39;,this)">Gering</div>
+          <div class="level-btn" data-cat="health" data-val="high" onclick="setKetoLevel('health','high',this)">Hoch</div>
+          <div class="level-btn" data-cat="health" data-val="mid"  onclick="setKetoLevel('health','mid',this)">Mittel</div>
+          <div class="level-btn" data-cat="health" data-val="low"  onclick="setKetoLevel('health','low',this)">Gering</div>
         </div>
       </div>
     </div>
@@ -409,7 +334,10 @@
           <div style="font-family:var(--font-mono);font-size:10px;color:var(--text2);">Abends bis erste Mahlzeit</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
-          <input type="number" id="fast-input" min="0" max="24" step="0.5" placeholder="—" oninput="saveFasting(this.value)" style="width:56px;background:var(--bg3);border:0.5px solid var(--border-med);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text0);font-family:var(--font-mono);font-size:16px;font-weight:700;text-align:center;outline:none;">
+          <input type="number" id="fast-input" min="0" max="24" step="0.5"
+            placeholder="—"
+            oninput="saveFasting(this.value)"
+            style="width:56px;background:var(--bg3);border:0.5px solid var(--border-med);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text0);font-family:var(--font-mono);font-size:16px;font-weight:700;text-align:center;outline:none;">
           <span style="font-family:var(--font-mono);font-size:12px;color:var(--text2);">h</span>
         </div>
         <div id="fast-badge" style="min-width:42px;text-align:center;"></div>
@@ -426,42 +354,24 @@
 
     <div class="stats-row">
       <div class="stat-card"><div class="val g" id="sv-streak">0</div><div class="lbl">streak</div></div>
-      <div class="stat-card"><div class="val" id="sv-best">1</div><div class="lbl">best</div></div>
-      <div class="stat-card"><div class="val a" id="sv-days">1</div><div class="lbl">akt. Tage</div></div>
+      <div class="stat-card"><div class="val" id="sv-best">0</div><div class="lbl">best</div></div>
+      <div class="stat-card"><div class="val a" id="sv-days">0</div><div class="lbl">akt. Tage</div></div>
       <div class="stat-card"><div class="val" id="sv-week">0%</div><div class="lbl">Ø Woche</div></div>
     </div>
 
     <div class="chart-card">
       <div class="chart-title">Habits diese Woche</div>
-      <div class="bar-chart" id="bar-chart"><div class="bar-col"><div class="bar" style="height:3px;opacity:0.6;"></div><div class="bar-lbl">Fr</div></div><div class="bar-col"><div class="bar" style="height:3px;opacity:0.6;"></div><div class="bar-lbl">Sa</div></div><div class="bar-col"><div class="bar" style="height:3px;opacity:0.6;"></div><div class="bar-lbl">So</div></div><div class="bar-col"><div class="bar" style="height:3px;opacity:0.6;"></div><div class="bar-lbl">Mo</div></div><div class="bar-col"><div class="bar" style="height:3px;opacity:0.6;"></div><div class="bar-lbl">Di</div></div><div class="bar-col"><div class="bar" style="height:3px;opacity:0.6;"></div><div class="bar-lbl">Mi</div></div><div class="bar-col"><div class="bar" style="height:3px;opacity:1;"></div><div class="bar-lbl today">Do</div></div></div>
+      <div class="bar-chart" id="bar-chart"></div>
     </div>
 
     <div class="chart-card">
       <div class="chart-title">Habit-Aufschlüsselung (7 Tage)</div>
-      <div class="prog-row" id="habit-breakdown"><div class="prog-item">
-      <div class="prog-lbl">🎾 Tennis</div>
-      <div class="prog-bg"><div class="prog-fill" style="width:0%;background:var(--red);"></div></div>
-      <div class="prog-val">0/7</div></div><div class="prog-item">
-      <div class="prog-lbl">🏋️ Krafttraining</div>
-      <div class="prog-bg"><div class="prog-fill" style="width:0%;background:var(--red);"></div></div>
-      <div class="prog-val">0/7</div></div><div class="prog-item">
-      <div class="prog-lbl">🫀 Cardio</div>
-      <div class="prog-bg"><div class="prog-fill" style="width:0%;background:var(--red);"></div></div>
-      <div class="prog-val">0/7</div></div><div class="prog-item">
-      <div class="prog-lbl">📚 Lesen</div>
-      <div class="prog-bg"><div class="prog-fill" style="width:0%;background:var(--red);"></div></div>
-      <div class="prog-val">0/7</div></div><div class="prog-item">
-      <div class="prog-lbl">💧 Wasser</div>
-      <div class="prog-bg"><div class="prog-fill" style="width:0%;background:var(--red);"></div></div>
-      <div class="prog-val">0/7</div></div><div class="prog-item">
-      <div class="prog-lbl">😴 Gut geschlafen</div>
-      <div class="prog-bg"><div class="prog-fill" style="width:0%;background:var(--red);"></div></div>
-      <div class="prog-val">0/7</div></div></div>
+      <div class="prog-row" id="habit-breakdown"></div>
     </div>
 
     <div class="chart-card">
       <div class="chart-title">Aktivität letzte 28 Tage</div>
-      <div class="streak-grid" id="streak-grid"><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell l2"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div><div class="streak-cell"></div></div>
+      <div class="streak-grid" id="streak-grid"></div>
     </div>
   </div>
 
@@ -530,7 +440,7 @@
         </div>
         <i class="fa-solid fa-chevron-right" style="color:var(--text2);font-size:12px;"></i>
       </div>
-      <div class="settings-row" onclick="if(confirm(&#39;Alle Daten löschen?&#39;)) clearData()">
+      <div class="settings-row" onclick="if(confirm('Alle Daten löschen?')) clearData()">
         <div class="settings-row-left">
           <div class="settings-row-icon" style="background:var(--red-dim);">🗑️</div>
           <div><div class="settings-row-name" style="color:var(--red);">Daten löschen</div><div class="settings-row-sub">Nicht rückgängig machbar</div></div>
@@ -544,10 +454,10 @@
 
   <!-- NAV -->
   <nav class="nav-bar">
-    <div class="nav-item active" onclick="showScreen(&#39;today&#39;,this)"><i class="fa-solid fa-house"></i><span>Heute</span></div>
-    <div class="nav-item" onclick="showScreen(&#39;keto&#39;,this)"><i class="fa-solid fa-bowl-food"></i><span>Keto</span></div>
-    <div class="nav-item" onclick="showScreen(&#39;stats&#39;,this)"><i class="fa-solid fa-chart-simple"></i><span>Verlauf</span></div>
-    <div class="nav-item" onclick="showScreen(&#39;settings&#39;,this)"><i class="fa-solid fa-gear"></i><span>Einstellungen</span></div>
+    <div class="nav-item active" onclick="showScreen('today',this)"><i class="fa-solid fa-house"></i><span>Heute</span></div>
+    <div class="nav-item" onclick="showScreen('keto',this)"><i class="fa-solid fa-bowl-food"></i><span>Keto</span></div>
+    <div class="nav-item" onclick="showScreen('stats',this)"><i class="fa-solid fa-chart-simple"></i><span>Verlauf</span></div>
+    <div class="nav-item" onclick="showScreen('settings',this)"><i class="fa-solid fa-gear"></i><span>Einstellungen</span></div>
   </nav>
 </div>
 
@@ -1519,6 +1429,5 @@ function clearData() { localStorage.removeItem('tracker_v2'); location.reload();
     navigator.serviceWorker.register('/sw.js').catch(()=>{});
   }
 </script>
-
-
-</body></html>
+</body>
+</html>
