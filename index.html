@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0057)file:///C:/Users/Florian%20Fiedler/Downloads/index_6.html -->
+<!-- saved from url=(0057)file:///C:/Users/Florian%20Fiedler/Downloads/index_8.html -->
 <html lang="de"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1256,8 +1256,8 @@ async function whoopSync() {
   updateSyncStatus('syncing');
   try {
     // Fetch latest recovery (contains sleep + HRV + RHR)
-    const recoveryData = await whoopFetch('/recovery?limit=1');
-    const cycleData    = await whoopFetch('/cycle?limit=1');
+    const recoveryData = await whoopFetch('/v2/recovery?limit=1');
+    const cycleData    = await whoopFetch('/v2/cycle?limit=1');
 
     const rec = recoveryData?.records?.[0];
     const cyc = cycleData?.records?.[0];
@@ -1275,7 +1275,7 @@ async function whoopSync() {
     };
 
     // also fetch sleep
-    const sleepData = await whoopFetch('/activity/sleep?limit=1');
+    const sleepData = await whoopFetch('/v2/activity/sleep?limit=1');
     const sl = sleepData?.records?.[0];
     if (sl?.score?.stage_summary?.total_in_bed_time_milli) {
       data.sleep_min = Math.round(sl.score.stage_summary.total_in_bed_time_milli / 60000);
