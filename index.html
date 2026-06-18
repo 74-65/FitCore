@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0057)file:///C:/Users/Florian%20Fiedler/Downloads/index_5.html -->
+<!-- saved from url=(0057)file:///C:/Users/Florian%20Fiedler/Downloads/index_6.html -->
 <html lang="de"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -560,7 +560,7 @@ const LEVEL_LABELS = { high:'Hoch', mid:'Mittel', low:'Gering' };
 // ══════════════════════════════════════════
 // WHOOP CONFIG — trag hier deine Werte ein
 // ══════════════════════════════════════════
-const WHOOP_CLIENT_ID     = '8de6a296-90d8-4619-a255-00ba5aea0181';
+const WHOOP_CLIENT_ID     = 'DEINE_CLIENT_ID';
 const WHOOP_PROXY_URL     = 'https://fitcore-whoop-proxy.fitcore88.workers.dev';
 const WHOOP_REDIRECT_URI  = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/') + 'callback.html';
 const WHOOP_SCOPES        = 'read:recovery read:cycles read:sleep read:workout read:body_measurement offline';
@@ -1242,7 +1242,7 @@ async function whoopFetch(path) {
     tokens = await whoopRefreshToken();
     if (!tokens) return null;
   }
-  const res = await fetch('https://api.prod.whoop.com/developer/v1' + path, {
+  const res = await fetch(WHOOP_PROXY_URL + '/api' + path, {
     headers: { Authorization: 'Bearer ' + tokens.access_token }
   });
   if (res.status === 401) { await whoopRefreshToken(); return null; }
