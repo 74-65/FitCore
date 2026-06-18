@@ -1,4 +1,5 @@
-const CACHE = 'fitcore-v1';
+// Version bump erzwingt Cache-Invalidierung bei allen Clients
+const CACHE = 'fitcore-v2';
 const ASSETS = [
   '/FitCore/',
   '/FitCore/index.html',
@@ -13,14 +14,20 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-  ));
-  self.clients.claim();
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => caches.delete(k))) // ALLE alten Caches löschen, nicht nur fremde
+    ).then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', e => {
+  // Network-first statt cache-first — verhindert, dass alte Versionen kleben bleiben
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request).then(res => {
+      const resClone = res.clone();
+      caches.open(CACHE).then(cache => cache.put(e.request, resClone));
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });
