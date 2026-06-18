@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0057)file:///C:/Users/Florian%20Fiedler/Downloads/index_8.html -->
+<!-- saved from url=(0057)file:///C:/Users/Florian%20Fiedler/Downloads/index_9.html -->
 <html lang="de"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1255,31 +1255,67 @@ async function whoopSync() {
   if (!tokens) return;
   updateSyncStatus('syncing');
   try {
-    // Fetch latest recovery (contains sleep + HRV + RHR)
     const recoveryData = await whoopFetch('/v2/recovery?limit=1');
     const cycleData    = await whoopFetch('/v2/cycle?limit=1');
+    const sleepData     = await whoopFetch('/v2/activity/sleep?limit=1');
+    const workoutData   = await whoopFetch('/v2/activity/workout?limit=5');
+    const bodyData       = await whoopFetch('/v2/user/measurement/body');
 
     const rec = recoveryData?.records?.[0];
     const cyc = cycleData?.records?.[0];
+    const sl  = sleepData?.records?.[0];
+    const workouts = workoutData?.records || [];
 
     const data = {
       synced_at: Date.now(),
+
+      // Recovery
       recovery_score: rec?.score?.recovery_score ?? null,
       hrv_rmssd: rec?.score?.hrv_rmssd_milli ? Math.round(rec.score.hrv_rmssd_milli) : null,
       rhr: rec?.score?.resting_heart_rate ?? null,
-      sleep_duration_min: rec?.sleep?.sleep_performance_percentage
-        ? null
-        : null,
-      strain: cyc?.score?.strain ? Math.round(cyc.score.strain * 10) / 10 : null,
-      // sleep from sleep endpoint
-    };
+      spo2: rec?.score?.spo2_percentage ? Math.round(rec.score.spo2_percentage * 10) / 10 : null,
+      skin_temp: rec?.score?.skin_temp_celsius ? Math.round(rec.score.skin_temp_celsius * 10) / 10 : null,
 
-    // also fetch sleep
-    const sleepData = await whoopFetch('/v2/activity/sleep?limit=1');
-    const sl = sleepData?.records?.[0];
-    if (sl?.score?.stage_summary?.total_in_bed_time_milli) {
-      data.sleep_min = Math.round(sl.score.stage_summary.total_in_bed_time_milli / 60000);
-    }
+      // Cycle / Strain
+      strain: cyc?.score?.strain ? Math.round(cyc.score.strain * 10) / 10 : null,
+      calories_burned: cyc?.score?.kilojoule ? Math.round(cyc.score.kilojoule / 4.184) : null, // kJ → kcal
+      avg_hr: cyc?.score?.average_heart_rate ?? null,
+      max_hr: cyc?.score?.max_heart_rate ?? null,
+
+      // Sleep detail
+      sleep_min: sl?.score?.stage_summary?.total_in_bed_time_milli
+        ? Math.round(sl.score.stage_summary.total_in_bed_time_milli / 60000) : null,
+      sleep_performance: sl?.score?.sleep_performance_percentage ?? null,
+      sleep_efficiency: sl?.score?.sleep_efficiency_percentage
+        ? Math.round(sl.score.sleep_efficiency_percentage * 10) / 10 : null,
+      sleep_consistency: sl?.score?.sleep_consistency_percentage ?? null,
+      respiratory_rate: sl?.score?.respiratory_rate
+        ? Math.round(sl.score.respiratory_rate * 10) / 10 : null,
+      rem_min: sl?.score?.stage_summary?.total_rem_sleep_time_milli
+        ? Math.round(sl.score.stage_summary.total_rem_sleep_time_milli / 60000) : null,
+      deep_min: sl?.score?.stage_summary?.total_slow_wave_sleep_time_milli
+        ? Math.round(sl.score.stage_summary.total_slow_wave_sleep_time_milli / 60000) : null,
+      light_min: sl?.score?.stage_summary?.total_light_sleep_time_milli
+        ? Math.round(sl.score.stage_summary.total_light_sleep_time_milli / 60000) : null,
+      disturbances: sl?.score?.stage_summary?.disturbance_count ?? null,
+
+      // Latest workouts (today's, filtered client-side by date)
+      workouts: workouts.map(w => ({
+        sport: w.sport_name,
+        start: w.start,
+        strain: w.score?.strain ? Math.round(w.score.strain * 10) / 10 : null,
+        kcal: w.score?.kilojoule ? Math.round(w.score.kilojoule / 4.184) : null,
+        avg_hr: w.score?.average_heart_rate ?? null,
+        max_hr: w.score?.max_heart_rate ?? null,
+        distance_m: w.score?.distance_meter ? Math.round(w.score.distance_meter) : null,
+        altitude_gain_m: w.score?.altitude_gain_meter ? Math.round(w.score.altitude_gain_meter) : null,
+      })),
+
+      // Body measurements (rarely changes, cached)
+      height_m: bodyData?.height_meter ?? null,
+      weight_kg: bodyData?.weight_kilogram ? Math.round(bodyData.weight_kilogram * 10) / 10 : null,
+      max_hr_user: bodyData?.max_heart_rate ?? null,
+    };
 
     saveWhoopData(data);
     updateSyncStatus('ok');
@@ -1352,11 +1388,50 @@ function renderWhoopBlock() {
       </div>
     </div>
     <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-family:var(--font-mono);font-size:9px;color:rgba(96,184,240,0.4);">RHR ${fmtRHR(data.rhr)}</span>
-      <span onclick="whoopSync()" style="font-family:var(--font-mono);font-size:9px;color:var(--blue);cursor:pointer;">↻ Aktualisieren</span>
+      <span style="font-family:var(--font-mono);font-size:9px;color:rgba(96,184,240,0.4);">RHR ${fmtRHR(data.rhr)} · ${data.calories_burned ?? '—'} kcal</span>
+      <span onclick="toggleWhoopDetails()" id="whoop-details-toggle" style="font-family:var(--font-mono);font-size:9px;color:var(--blue);cursor:pointer;">Details ▾</span>
+    </div>
+    <div id="whoop-details" style="display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(96,184,240,0.15);">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">SpO2: ${data.spo2 ?? '—'}%</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Hauttemp: ${data.skin_temp ?? '—'}°C</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Ø Puls: ${data.avg_hr ?? '—'} bpm</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Max Puls: ${data.max_hr ?? '—'} bpm</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Sleep Perf: ${data.sleep_performance ?? '—'}%</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Sleep Eff: ${data.sleep_efficiency ?? '—'}%</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Tiefschlaf: ${fmtSleep(data.deep_min)}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">REM: ${fmtSleep(data.rem_min)}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Leichtschlaf: ${fmtSleep(data.light_min)}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Atemfreq: ${data.respiratory_rate ?? '—'}/min</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Störungen: ${data.disturbances ?? '—'}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Schlafkonst: ${data.sleep_consistency ?? '—'}%</div>
+      </div>
+      ${data.weight_kg ? `<div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.5);margin-bottom:8px;">Gewicht: ${data.weight_kg}kg · Größe: ${data.height_m ? Math.round(data.height_m*100) : '—'}cm · Max HF: ${data.max_hr_user ?? '—'}</div>` : ''}
+      ${data.workouts && data.workouts.length > 0 ? `
+        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(96,184,240,0.5);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Letzte Workouts</div>
+        ${data.workouts.slice(0,3).map(w => `
+          <div style="background:rgba(96,184,240,0.06);border-radius:8px;padding:8px 10px;margin-bottom:5px;">
+            <div style="font-size:12px;color:var(--blue);font-weight:600;margin-bottom:3px;">${w.sport || 'Workout'}</div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:rgba(96,184,240,0.6);">
+              Strain ${w.strain ?? '—'} · ${w.kcal ?? '—'} kcal · Ø${w.avg_hr ?? '—'}bpm${w.distance_m ? ' · '+(w.distance_m/1000).toFixed(2)+'km' : ''}
+            </div>
+          </div>`).join('')}
+      ` : ''}
+      <div style="text-align:right;">
+        <span onclick="whoopSync()" style="font-family:var(--font-mono);font-size:9px;color:var(--blue);cursor:pointer;">↻ Aktualisieren</span>
+      </div>
     </div>`;
 
   updateSyncStatus('ok');
+}
+
+function toggleWhoopDetails() {
+  const el = document.getElementById('whoop-details');
+  const toggle = document.getElementById('whoop-details-toggle');
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  toggle.textContent = isOpen ? 'Details ▾' : 'Details ▴';
 }
 
 function updateWhoopSettings() {
