@@ -397,12 +397,24 @@
         </div>
         <span id="whoop-settings-badge" style="font-family:var(--font-mono);font-size:10px;padding:3px 7px;border-radius:5px;background:var(--blue-dim);color:var(--blue);border:0.5px solid rgba(96,184,240,0.3);">Verbinden</span>
       </div>
-      <div class="settings-row">
+      <div class="settings-row" onclick="openSyncDialog()" id="sync-settings-row">
         <div class="settings-row-left">
           <div class="settings-row-icon" style="background:var(--accent-dim);">☁️</div>
-          <div><div class="settings-row-name">Supabase Sync</div><div class="settings-row-sub">Geräteübergreifend</div></div>
+          <div><div class="settings-row-name">Cloud Sync</div><div class="settings-row-sub" id="sync-settings-sub">Geräteübergreifend</div></div>
         </div>
-        <span class="coming-badge">bald</span>
+        <span id="sync-settings-badge" style="font-family:var(--font-mono);font-size:10px;padding:3px 7px;border-radius:5px;background:var(--blue-dim);color:var(--blue);border:0.5px solid rgba(96,184,240,0.3);">Verbinden</span>
+      </div>
+    </div>
+
+    <div id="sync-dialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+      <div style="background:var(--bg2);border-radius:16px;padding:24px;max-width:320px;margin:20px;">
+        <h3 style="margin:0 0 8px;font-size:16px;">Cloud Sync</h3>
+        <p style="font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.5;">Gib einen geheimen Code ein (mind. 4 Zeichen). Gleicher Code auf allen Geräten = gleiche Daten. Deine Daten werden verschlüsselt gespeichert.</p>
+        <input id="sync-code-input" type="text" placeholder="Geheimer Code" style="width:100%;padding:10px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.15);background:var(--bg1);color:var(--text0);font-family:var(--font-mono);margin-bottom:12px;box-sizing:border-box;">
+        <div style="display:flex;gap:8px;">
+          <button onclick="closeSyncDialog()" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--bg3);color:var(--text1);font-weight:600;">Abbrechen</button>
+          <button onclick="submitSyncCode()" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#0a0a09;font-weight:600;">Verbinden</button>
+        </div>
       </div>
     </div>
 
@@ -482,7 +494,7 @@ const LEVEL_LABELS = { high:'Hoch', mid:'Mittel', low:'Gering' };
 // ══════════════════════════════════════════
 // WHOOP CONFIG — trag hier deine Werte ein
 // ══════════════════════════════════════════
-const WHOOP_CLIENT_ID     = '8de6a296-90d8-4619-a255-00ba5aea0181';
+const WHOOP_CLIENT_ID     = 'DEINE_CLIENT_ID';
 const WHOOP_PROXY_URL     = 'https://fitcore-whoop-proxy.fitcore88.workers.dev';
 const WHOOP_REDIRECT_URI  = 'https://74-65.github.io/FitCore/callback.html';
 const WHOOP_SCOPES        = 'read:recovery read:cycles read:sleep read:workout read:body_measurement offline';
@@ -528,12 +540,187 @@ function saveDay(key, day) {
   if (!s.days) s.days = {};
   s.days[key] = day;
   saveState(s);
+  scheduleCloudSync();
+}
+
+// ══════════════════════════════════════════
+// CLOUD SYNC (verschlüsselt, Cloudflare KV)
+// ══════════════════════════════════════════
+// ── Supabase Config ──
+const SUPABASE_URL = 'https://inputbdkhoegsrofimai.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7pvJBaukiGlg74Oysd9lBQ_NWks_Fy4';
+
+function getSyncCode() { return localStorage.getItem('sync_code') || null; }
+function setSyncCode(code) { localStorage.setItem('sync_code', code); }
+function clearSyncCode() { localStorage.removeItem('sync_code'); }
+
+// Verschlüsselung via Web Crypto API
+async function deriveKey(code, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(code), { name: 'PBKDF2' }, false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptData(code, dataObj) {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(code, salt);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(dataObj)));
+  return JSON.stringify({
+    salt: btoa(String.fromCharCode(...salt)),
+    iv: btoa(String.fromCharCode(...iv)),
+    data: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+  });
+}
+
+async function decryptData(code, payloadStr) {
+  const payload = JSON.parse(payloadStr);
+  if (!payload.salt || !payload.iv || !payload.data) return null;
+  const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+  const ciphertext = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+  const key = await deriveKey(code, salt);
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  return JSON.parse(new TextDecoder().decode(plaintext));
+}
+
+async function supabaseFetch(method, body) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/sync_data`, {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : 'return=representation',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res;
+}
+
+let syncTimeout = null;
+function scheduleCloudSync() {
+  const code = getSyncCode();
+  if (!code) return;
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => pushToCloud(code), 1500);
+}
+
+async function pushToCloud(code) {
+  try {
+    const state = loadState();
+    const encrypted = await encryptData(code, state);
+    await supabaseFetch('POST', { sync_code: code, data: encrypted });
+    updateSyncBadge('ok');
+  } catch (e) {
+    updateSyncBadge('error');
+  }
+}
+
+async function pullFromCloud(code) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/sync_data?sync_code=eq.${encodeURIComponent(code)}&select=data`,
+    {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+      }
+    }
+  );
+  const rows = await res.json();
+  if (!rows || rows.length === 0 || !rows[0].data) return null;
+  return decryptData(code, rows[0].data);
+}
+
+async function connectSync(code) {
+  if (!code || code.length < 4) {
+    alert('Code muss mindestens 4 Zeichen haben.');
+    return;
+  }
+  try {
+    const cloudState = await pullFromCloud(code);
+    const localState = loadState();
+    const localHasData = localState.days && Object.keys(localState.days).length > 0;
+    if (cloudState && Object.keys(cloudState).length > 0) {
+      saveState(cloudState);
+    } else if (localHasData) {
+      await pushToCloud(code);
+    }
+    setSyncCode(code);
+    updateSyncBadge('ok');
+    location.reload();
+  } catch (e) {
+    alert('Verbindung fehlgeschlagen. Code oder Verbindung prüfen.');
+  }
+}
+
+function disconnectSync() {
+  clearSyncCode();
+  updateSyncBadge('off');
+}
+
+function updateSyncBadge(state) {
+  const el = document.getElementById('sync-settings-sub');
+  const badge = document.getElementById('sync-settings-badge');
+  if (!el || !badge) return;
+  const code = getSyncCode();
+  if (!code) {
+    el.textContent = 'Geräteübergreifend';
+    badge.textContent = 'Verbinden';
+    badge.style.background = 'var(--blue-dim)';
+    badge.style.color = 'var(--blue)';
+    return;
+  }
+  if (state === 'ok') el.textContent = 'Verbunden · synced';
+  else if (state === 'error') el.textContent = 'Verbunden · Sync-Fehler';
+  badge.textContent = 'Trennen';
+  badge.style.background = 'var(--red-dim)';
+  badge.style.color = 'var(--red)';
+}
+
+function openSyncDialog() {
+  const code = getSyncCode();
+  if (code) {
+    if (confirm('Cloud Sync trennen? Lokale Daten bleiben erhalten.')) {
+      disconnectSync();
+    }
+    return;
+  }
+  document.getElementById('sync-dialog').style.display = 'flex';
+}
+function closeSyncDialog() {
+  document.getElementById('sync-dialog').style.display = 'none';
+}
+async function submitSyncCode() {
+  const code = document.getElementById('sync-code-input').value.trim();
+  await connectSync(code);
+  closeSyncDialog();
 }
 
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  // Cloud Sync: bei Start neueste Daten von der Cloud holen, falls verbunden
+  const syncCode = getSyncCode();
+  if (syncCode) {
+    try {
+      const cloudState = await pullFromCloud(syncCode);
+      if (cloudState && Object.keys(cloudState).length > 0) {
+        saveState(cloudState);
+      }
+    } catch (e) { /* offline oder Fehler — mit lokalen Daten weitermachen */ }
+  }
+
   // Handle OAuth callback if redirected back from WHOOP
   handleOAuthCallback();
   renderHeader();
@@ -1106,6 +1293,7 @@ function showScreen(name, navEl) {
     if (idEl) idEl.textContent = WHOOP_CLIENT_ID;
     if (uriEl) uriEl.textContent = WHOOP_REDIRECT_URI;
     if (proxyEl) proxyEl.textContent = WHOOP_PROXY_URL;
+    updateSyncBadge();
   }
 }
 
