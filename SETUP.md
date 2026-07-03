@@ -1,70 +1,74 @@
-# Tracker PWA – Setup-Anleitung
+# FitCore – Setup & Architektur
+
+Private iOS PWA für tägliches Tracking von Keto-Ernährung, Sport-Habits (Tennis,
+Krafttraining, Cardio), Lesen, Wasser, Schlaf und Notizen. Inklusive
+WHOOP-Integration und verschlüsseltem Cross-Device-Sync.
+
+- Live: https://74-65.github.io/FitCore/
+- Repo: https://github.com/74-65/FitCore
 
 ## Dateien
-- `index.html` – die komplette App
-- `manifest.json` – PWA-Konfiguration
-- `sw.js` – Service Worker (Offline-Support)
+- `index.html` – die komplette App (Single-Page, kein Framework)
+- `manifest.json` – PWA-Konfiguration (scope `/FitCore/`)
+- `sw.js` – Service Worker, network-first, löscht alte Caches bei jedem Update
+- `callback.html` – OAuth-Redirect-Ziel für WHOOP
+- `icon-192.png` / `icon-512.png` – App-Icons
 
-## Schritt 1: GitHub-Account anlegen (falls noch nicht vorhanden)
-→ https://github.com/join
-Kostenlos, keine Kreditkarte nötig.
+## Deploy
+Änderungen an diesen Dateien nach `main` pushen/committen → GitHub Pages
+deployt automatisch nach ca. 1–2 Minuten. Kein Build-Step nötig.
 
-## Schritt 2: Neues Repository erstellen
-1. Auf github.com oben rechts auf „+" → „New repository"
-2. Name: `tracker` (oder was du möchtest)
-3. **Public** auswählen (nötig für kostenloses GitHub Pages)
-4. „Create repository" klicken
+## Zum iPhone-Homescreen hinzufügen
+1. `https://74-65.github.io/FitCore/` in Safari öffnen
+2. Teilen-Symbol → „Zum Home-Bildschirm"
+3. App aktualisiert sich danach selbst: der Service Worker lädt neue
+   Versionen automatisch nach und reloadet die Seite einmalig, sobald ein
+   Update installiert ist.
 
-## Schritt 3: Dateien hochladen
-1. Im Repository auf „uploading an existing file" klicken
-2. Alle drei Dateien hochladen: `index.html`, `manifest.json`, `sw.js`
-3. „Commit changes" klicken
+## WHOOP Integration
 
-## Schritt 4: GitHub Pages aktivieren
-1. Im Repository auf „Settings" klicken
-2. Links auf „Pages"
-3. Source: „Deploy from a branch"
-4. Branch: `main` / Ordner: `/ (root)`
-5. „Save"
+Konfiguriert in `index.html`:
+```js
+const WHOOP_CLIENT_ID     = '8de6a296-90d8-4619-a255-00ba5aea0181';
+const WHOOP_PROXY_URL     = 'https://fitcore-whoop-proxy.fitcore88.workers.dev';
+const WHOOP_REDIRECT_URI  = 'https://74-65.github.io/FitCore/callback.html';
+```
 
-Nach 1-2 Minuten ist die App unter
-`https://DEIN-USERNAME.github.io/tracker/`
-erreichbar.
+- OAuth läuft über einen Cloudflare-Worker-Proxy (Client Secret bleibt dort,
+  nie im Frontend-Code). Der Worker tauscht den Auth-Code gegen Tokens und
+  leitet `/api/*`-Calls an die WHOOP v2 API weiter.
+- WHOOP-App-Verwaltung: developer.whoop.com, Redirect URI muss exakt
+  `https://74-65.github.io/FitCore/callback.html` sein.
+- Sync (alle 30 min automatisch): Recovery, Schlaf, HRV, Strain, RHR, SpO2,
+  Hauttemperatur, Schlafphasen, Workouts, Körperdaten.
+- **Wichtig:** `WHOOP_CLIENT_ID` ist eine echte, feste ID – beim Bearbeiten
+  von `index.html` (z.B. über GitHub-Weboberfläche oder KI-Tools) nicht
+  versehentlich mit einem Platzhalter überschreiben.
+- Verbindung herstellen: Einstellungen → WHOOP → „Verbinden".
 
-## Schritt 5: Zum iPhone Homescreen hinzufügen
-1. URL im Safari öffnen
-2. Unten auf das Teilen-Symbol tippen
-3. „Zum Home-Bildschirm" wählen
-4. Fertig – die App erscheint wie eine native App
+## Cloud Sync (Supabase)
 
-## Nächste Schritte (später)
-- [ ] App-Icon erstellen (icon-192.png + icon-512.png)
-- [ ] Supabase-Sync einbauen (geräteübergreifend)
-- [ ] WHOOP API Integration
-- [ ] Push-Reminder (iOS 16.4+)
+Konfiguriert in `index.html`:
+```js
+const SUPABASE_URL = 'https://inputbdkhoegsrofimai.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7pvJBaukiGlg74Oysd9lBQ_NWks_Fy4';
+```
 
-## Daten
-Alle Daten liegen lokal im `localStorage` deines iPhones.
+- Projekt: https://inputbdkhoegsrofimai.supabase.co, Tabelle `sync_data`
+  (Spalten `id`, `created_at`, `sync_code` [unique], `data`), RLS aktiv mit
+  Policy `allow_all` (FOR ALL, USING true, WITH CHECK true).
+- Daten werden vor dem Upload clientseitig mit AES-GCM verschlüsselt (Web
+  Crypto API, PBKDF2-Schlüsselableitung aus dem Sync-Code).
+- Sync-Code wird frei vom User gewählt (mind. 4 Zeichen) und nur lokal
+  (`localStorage`) gespeichert – Supabase kennt nur den verschlüsselten Blob.
+- Aktivieren: Einstellungen → „Geräteübergreifend" → Code eingeben (auf
+  jedem Gerät denselben Code verwenden, um Daten zu teilen).
+
+## Lokale Daten
+Alle Daten liegen zusätzlich lokal im `localStorage` (`tracker_v2`).
 Export jederzeit unter Einstellungen → „Daten exportieren".
 
-## WHOOP Integration einrichten
-
-### Schritt 1: Client ID & Secret eintragen
-Öffne `index.html` und suche nach dieser Stelle (ca. Zeile 465):
-```
-const WHOOP_CLIENT_ID     = 'DEINE_CLIENT_ID';
-const WHOOP_CLIENT_SECRET = 'DEIN_CLIENT_SECRET';
-```
-Ersetze die beiden Platzhalter mit deinen echten Werten aus dem WHOOP Developer Dashboard.
-
-### Schritt 2: Redirect URI aktualisieren
-Sobald du deine GitHub-Pages-URL kennst (z.B. `https://username.github.io/tracker`), geh ins WHOOP Developer Dashboard → deine App → Redirect URI ändern auf:
-`https://username.github.io/tracker/callback.html`
-
-### Schritt 3: callback.html hochladen
-Die Datei `callback.html` muss ebenfalls auf GitHub Pages liegen (zusammen mit index.html).
-
-### Schritt 4: In der App verbinden
-Einstellungen → WHOOP → "Verbinden" → einmal bei WHOOP einloggen → fertig.
-
-Ab dann: automatischer Sync bei jedem App-Start (alle 30 min).
+## Bekannte Einschränkungen
+- Cloudflare-Account des Worker-Betreibers ist eingeschränkt (ToS-Flag) –
+  der bestehende Worker läuft weiter, aber es können aktuell keine neuen
+  Cloudflare-Ressourcen angelegt werden.

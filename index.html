@@ -170,9 +170,6 @@
     .meal-pill.high { background: var(--accent-dim); color: var(--accent); border-color: rgba(200,240,96,0.3); }
     .meal-pill.mid  { background: var(--amber-dim); color: var(--amber); border-color: rgba(240,168,64,0.3); }
     .meal-pill.low  { background: var(--red-dim); color: var(--red); border-color: rgba(255,107,107,0.3); }
-    /* carbs pill: low = good */
-    .meal-pill.carbs-low  { background: var(--accent-dim); color: var(--accent); border-color: rgba(200,240,96,0.3); }
-    .meal-pill.carbs-high { background: var(--red-dim); color: var(--red); border-color: rgba(255,107,107,0.3); }
 
     /* STATS */
     .chart-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
@@ -378,15 +375,6 @@
   <!-- ══ EINSTELLUNGEN ══ -->
   <div class="screen" id="screen-settings">
     <div class="page-header" style="padding-bottom:10px;"><div><h1>Einstellungen</h1></div></div>
-
-    <div class="section-label">Debug Info</div>
-    <div class="settings-section" style="padding:14px;">
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text2);line-height:1.8;word-break:break-all;">
-        <div>Client ID: <span id="debug-client-id" style="color:var(--accent);"></span></div>
-        <div>Redirect URI: <span id="debug-redirect-uri" style="color:var(--accent);"></span></div>
-        <div>Proxy URL: <span id="debug-proxy-url" style="color:var(--accent);"></span></div>
-      </div>
-    </div>
 
     <div class="section-label">Integrationen</div>
     <div class="settings-section">
@@ -1037,8 +1025,6 @@ const MEAL_SLOTS = [
 
 function pillClass(dim, val) {
   if (!val) return '';
-  if (dim==='carbs') return val==='low'?'carbs-low':val==='high'?'carbs-high':'mid';
-  if (dim==='calories') return val==='high'?'high':val==='mid'?'mid':'low';
   return val==='high'?'high':val==='mid'?'mid':'low';
 }
 
@@ -1052,7 +1038,7 @@ function renderMeals() {
   MEAL_SLOTS.forEach(slot => {
     const data = day.meals2[slot.id] || null;
     const isSkipped = data && data.skipped;
-    const hasMeal = data && !data.skipped && data.name;
+    const hasMeal = data && !data.skipped && (data.name || data.protein || data.carbs || data.calories || data.health);
 
     const card = document.createElement('div');
     card.className = 'add-meal-card';
@@ -1069,7 +1055,7 @@ function renderMeals() {
         data.calories? `<span class="meal-pill ${pillClass('calories',data.calories)}">Kcal: ${LEVEL_LABELS[data.calories]}</span>` : '',
         data.health  ? `<span class="meal-pill ${pillClass('health',data.health)}">G: ${LEVEL_LABELS[data.health]}</span>` : '',
       ].filter(Boolean).join('');
-      statusHtml = `<div style="display:flex;flex-direction:column;gap:3px;"><div style="font-size:12px;font-weight:600;color:var(--text0);">${data.name}</div><div class="meal-pills">${pills}</div></div>`;
+      statusHtml = `<div style="display:flex;flex-direction:column;gap:3px;">${data.name ? `<div style="font-size:12px;font-weight:600;color:var(--text0);">${data.name}</div>` : ''}<div class="meal-pills">${pills}</div></div>`;
     }
 
     if (hasMeal || isSkipped) {
@@ -1132,11 +1118,14 @@ function selectSlotLevel(slotId, dim, val, btn) {
 function saveMealSlot(slotId) {
   const inp = document.getElementById('meal-input-'+slotId);
   const name = inp ? inp.value.trim() : '';
-  if (!name) { alert('Bitte Mahlzeit benennen'); return; }
+  const sf = slotForms[slotId] || {};
+  if (!name && !sf.protein && !sf.carbs && !sf.calories && !sf.health) {
+    alert('Bitte Mahlzeit benennen oder mindestens eine Zielerfüllung angeben');
+    return;
+  }
   const key = todayKey();
   const day = getDay(key);
   if (!day.meals2) day.meals2 = {};
-  const sf = slotForms[slotId] || {};
   day.meals2[slotId] = { name, protein:sf.protein||null, carbs:sf.carbs||null, calories:sf.calories||null, health:sf.health||null };
   saveDay(key, day);
   slotForms[slotId] = {};
@@ -1287,12 +1276,6 @@ function showScreen(name, navEl) {
   if (name==='keto') loadKetoScreen();
   if (name==='stats') renderStats();
   if (name==='settings') {
-    const idEl = document.getElementById('debug-client-id');
-    const uriEl = document.getElementById('debug-redirect-uri');
-    const proxyEl = document.getElementById('debug-proxy-url');
-    if (idEl) idEl.textContent = WHOOP_CLIENT_ID;
-    if (uriEl) uriEl.textContent = WHOOP_REDIRECT_URI;
-    if (proxyEl) proxyEl.textContent = WHOOP_PROXY_URL;
     updateSyncBadge();
   }
 }
@@ -1614,7 +1597,13 @@ function clearData() { localStorage.removeItem('tracker_v2'); location.reload();
 </script>
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
   }
 </script>
 </body>
