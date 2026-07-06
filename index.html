@@ -582,7 +582,10 @@ async function decryptData(code, payloadStr) {
 }
 
 async function supabaseFetch(method, body) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/sync_data`, {
+  const url = method === 'POST'
+    ? `${SUPABASE_URL}/rest/v1/sync_data?on_conflict=sync_code`
+    : `${SUPABASE_URL}/rest/v1/sync_data`;
+  const res = await fetch(url, {
     method,
     headers: {
       'apikey': SUPABASE_KEY,
@@ -616,7 +619,7 @@ async function pushToCloud(code) {
 
 async function pullFromCloud(code) {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/sync_data?sync_code=eq.${encodeURIComponent(code)}&select=data`,
+    `${SUPABASE_URL}/rest/v1/sync_data?sync_code=eq.${encodeURIComponent(code)}&select=data&order=created_at.desc&limit=1`,
     {
       headers: {
         'apikey': SUPABASE_KEY,
