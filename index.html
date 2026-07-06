@@ -23,7 +23,7 @@
       --accent: #c8f060; --accent-dim: rgba(200,240,96,0.12); --accent-dim2: rgba(200,240,96,0.06);
       --red: #ff6b6b; --red-dim: rgba(255,107,107,0.12);
       --amber: #f0a840; --amber-dim: rgba(240,168,64,0.12);
-      --blue: #60b8f0; --blue-dim: rgba(96,184,240,0.10);
+      --blue: #60b8f0; --blue-dim: rgba(96,184,240,0.10); --blue-text: #7ea9c9;
       --radius-sm: 10px; --radius-md: 14px; --radius-lg: 20px; --radius-xl: 28px;
       --font-head: 'Syne', sans-serif; --font-mono: 'DM Mono', monospace;
     }
@@ -108,12 +108,12 @@
     .whoop-block { background: var(--blue-dim); border: 0.5px solid rgba(96,184,240,0.2); border-radius: var(--radius-lg); padding: 13px 15px; margin-bottom: 14px; }
     .whoop-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .whoop-title { font-size: 12px; font-weight: 600; color: var(--blue); }
-    .whoop-badge { font-family: var(--font-mono); font-size: 10px; color: rgba(96,184,240,0.6); }
+    .whoop-badge { font-family: var(--font-mono); font-size: 10px; color: var(--blue-text); }
     .whoop-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
     .whoop-metric { background: rgba(96,184,240,0.08); border-radius: var(--radius-sm); padding: 7px 6px; text-align: center; }
     .whoop-metric .wv { font-size: 14px; font-weight: 700; color: var(--blue); }
-    .whoop-metric .wl { font-family: var(--font-mono); font-size: 9px; color: rgba(96,184,240,0.5); margin-top: 2px; }
-    .whoop-coming { font-family: var(--font-mono); font-size: 10px; color: rgba(96,184,240,0.4); text-align: center; padding: 6px; }
+    .whoop-metric .wl { font-family: var(--font-mono); font-size: 9px; color: var(--blue-text); margin-top: 2px; }
+    .whoop-coming { font-family: var(--font-mono); font-size: 10px; color: var(--blue-text); text-align: center; padding: 6px; }
 
     /* MEAL SLOT logged state */
     .meal-slot-logged { display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -1492,31 +1492,31 @@ function renderWhoopBlock() {
       </div>
     </div>
     <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-family:var(--font-mono);font-size:9px;color:rgba(96,184,240,0.4);">RHR ${fmtRHR(data.rhr)} · ${data.calories_burned ?? '—'} kcal</span>
+      <span style="font-family:var(--font-mono);font-size:9px;color:var(--blue-text);">RHR ${fmtRHR(data.rhr)} · ${data.calories_burned ?? '—'} kcal</span>
       <span onclick="toggleWhoopDetails()" id="whoop-details-toggle" style="font-family:var(--font-mono);font-size:9px;color:var(--blue);cursor:pointer;">Details ▾</span>
     </div>
     <div id="whoop-details" style="display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(96,184,240,0.15);">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">SpO2: ${data.spo2 ?? '—'}%</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Hauttemp: ${data.skin_temp ?? '—'}°C</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Ø Puls: ${data.avg_hr ?? '—'} bpm</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Max Puls: ${data.max_hr ?? '—'} bpm</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Sleep Perf: ${data.sleep_performance ?? '—'}%</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Sleep Eff: ${data.sleep_efficiency ?? '—'}%</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Tiefschlaf: ${fmtSleep(data.deep_min)}</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">REM: ${fmtSleep(data.rem_min)}</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Leichtschlaf: ${fmtSleep(data.light_min)}</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Atemfreq: ${data.respiratory_rate ?? '—'}/min</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Störungen: ${data.disturbances ?? '—'}</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.7);">Schlafkonst: ${data.sleep_consistency ?? '—'}%</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">SpO2: ${data.spo2 ?? '—'}%</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Hauttemp: ${data.skin_temp ?? '—'}°C</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Ø Puls: ${data.avg_hr ?? '—'} bpm</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Max Puls: ${data.max_hr ?? '—'} bpm</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Sleep Perf: ${data.sleep_performance ?? '—'}%</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Sleep Eff: ${data.sleep_efficiency ?? '—'}%</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Tiefschlaf: ${fmtSleep(data.deep_min)}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">REM: ${fmtSleep(data.rem_min)}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Leichtschlaf: ${fmtSleep(data.light_min)}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Atemfreq: ${data.respiratory_rate ?? '—'}/min</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Störungen: ${data.disturbances ?? '—'}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);">Schlafkonst: ${data.sleep_consistency ?? '—'}%</div>
       </div>
-      ${data.weight_kg ? `<div style="font-family:var(--font-mono);font-size:10px;color:rgba(96,184,240,0.5);margin-bottom:8px;">Gewicht: ${data.weight_kg}kg · Größe: ${data.height_m ? Math.round(data.height_m*100) : '—'}cm · Max HF: ${data.max_hr_user ?? '—'}</div>` : ''}
+      ${data.weight_kg ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--blue-text);margin-bottom:8px;">Gewicht: ${data.weight_kg}kg · Größe: ${data.height_m ? Math.round(data.height_m*100) : '—'}cm · Max HF: ${data.max_hr_user ?? '—'}</div>` : ''}
       ${data.workouts && data.workouts.length > 0 ? `
-        <div style="font-family:var(--font-mono);font-size:9px;color:rgba(96,184,240,0.5);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Letzte Workouts</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--blue-text);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Letzte Workouts</div>
         ${data.workouts.slice(0,3).map(w => `
           <div style="background:rgba(96,184,240,0.06);border-radius:8px;padding:8px 10px;margin-bottom:5px;">
             <div style="font-size:12px;color:var(--blue);font-weight:600;margin-bottom:3px;">${w.sport || 'Workout'}</div>
-            <div style="font-family:var(--font-mono);font-size:9px;color:rgba(96,184,240,0.6);">
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--blue-text);">
               Strain ${w.strain ?? '—'} · ${w.kcal ?? '—'} kcal · Ø${w.avg_hr ?? '—'}bpm${w.distance_m ? ' · '+(w.distance_m/1000).toFixed(2)+'km' : ''}
             </div>
           </div>`).join('')}
