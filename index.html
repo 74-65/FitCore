@@ -217,6 +217,16 @@
     .growth-label { font-size: 14px; font-weight: 700; color: var(--text0); }
     .growth-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text2); margin-top: 2px; }
 
+    /* DATE NAV */
+    .date-nav-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 8px 10px; margin-bottom: 14px; }
+    .date-nav-row.past { border-color: rgba(240,168,64,0.35); }
+    .date-nav-arrow { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--bg3); color: var(--text1); cursor: pointer; font-size: 13px; flex-shrink: 0; }
+    .date-nav-arrow.disabled { opacity: 0.3; pointer-events: none; }
+    .date-nav-center { flex: 1; text-align: center; }
+    .date-nav-label { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text0); }
+    .date-nav-row.past .date-nav-label { color: var(--amber); }
+    .date-nav-jump { font-family: var(--font-mono); font-size: 10px; color: var(--blue-text); text-decoration: underline; cursor: pointer; margin-top: 2px; }
+
     /* SETTINGS */
     .settings-section { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 14px; }
     .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 0.5px solid var(--border); cursor: pointer; }
@@ -261,10 +271,16 @@
       </div>
     </div>
 
+    <div class="date-nav-row">
+      <div class="date-nav-arrow" onclick="shiftActiveDate(-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="date-nav-center"><div class="date-nav-label">Heute</div></div>
+      <div class="date-nav-arrow date-nav-next disabled" onclick="shiftActiveDate(1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+
     <div class="stats-row">
       <div class="stat-card"><div class="val" id="stat-done">0</div><div class="lbl">erledigt</div></div>
       <div class="stat-card"><div class="val" id="stat-total">6</div><div class="lbl">habits</div></div>
-      <div class="stat-card"><div class="val g" id="stat-pct">0%</div><div class="lbl">heute</div></div>
+      <div class="stat-card"><div class="val g" id="stat-pct">0%</div><div class="lbl" id="stat-pct-lbl">heute</div></div>
       <div class="stat-card"><div class="val a" id="stat-streak2">0</div><div class="lbl">streak</div></div>
     </div>
 
@@ -301,7 +317,7 @@
     <div class="section-label">Vibe Score</div>
     <div class="add-meal-card" style="margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <span style="font-size:13px;font-weight:600;color:var(--text0);">Wie fühlst du dich heute?</span>
+        <span id="feeling-prompt" style="font-size:13px;font-weight:600;color:var(--text0);">Wie fühlst du dich heute?</span>
         <span id="feeling-val" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text2);">—</span>
       </div>
       <div class="score-row" id="feeling-row"></div>
@@ -324,6 +340,12 @@
         <h1>Ernährung</h1>
         <div class="date">Keto · Ziele: 150g Protein · &lt;20g KH · −500 kcal</div>
       </div>
+    </div>
+
+    <div class="date-nav-row">
+      <div class="date-nav-arrow" onclick="shiftActiveDate(-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="date-nav-center"><div class="date-nav-label">Heute</div></div>
+      <div class="date-nav-arrow date-nav-next disabled" onclick="shiftActiveDate(1)"><i class="fa-solid fa-chevron-right"></i></div>
     </div>
 
     <div id="keto-status-banner" style="display:none;"></div>
@@ -380,7 +402,7 @@
       <div style="display:flex;align-items:center;gap:12px;">
         <span style="font-size:22px;">⏱️</span>
         <div style="flex:1;">
-          <div style="font-size:13px;font-weight:600;color:var(--text0);margin-bottom:2px;">Fastendauer heute</div>
+          <div id="fast-label" style="font-size:13px;font-weight:600;color:var(--text0);margin-bottom:2px;">Fastendauer heute</div>
           <div style="font-family:var(--font-mono);font-size:10px;color:var(--text2);">Abends bis erste Mahlzeit</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
@@ -617,6 +639,55 @@ function saveDay(key, day) {
 }
 
 // ══════════════════════════════════════════
+// AKTIVER TAG (für rückwirkendes Nachtragen)
+// ══════════════════════════════════════════
+let activeDate = todayKey();
+
+function shiftActiveDate(delta) {
+  const shifted = addDaysToKey(activeDate, delta);
+  activeDate = shifted > todayKey() ? todayKey() : shifted;
+  refreshActiveDateViews();
+}
+function jumpToToday() {
+  activeDate = todayKey();
+  refreshActiveDateViews();
+}
+function renderDateNav() {
+  const isT = activeDate === todayKey();
+  const d = new Date(activeDate + 'T00:00:00Z');
+  const dayNames = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const dateStr = `${dayNames[d.getUTCDay()]}, ${d.getUTCDate()}. ${months[d.getUTCMonth()]}`;
+  const labelHtml = (isT ? 'Heute · ' : '') + dateStr + (!isT ? '<div class="date-nav-jump" onclick="jumpToToday()">Zu Heute springen</div>' : '');
+  document.querySelectorAll('.date-nav-row').forEach(row => {
+    row.classList.toggle('past', !isT);
+    const lbl = row.querySelector('.date-nav-label');
+    if (lbl) lbl.innerHTML = labelHtml;
+    const next = row.querySelector('.date-nav-next');
+    if (next) next.classList.toggle('disabled', isT);
+  });
+  const feelingPrompt = document.getElementById('feeling-prompt');
+  if (feelingPrompt) feelingPrompt.textContent = isT ? 'Wie fühlst du dich heute?' : 'Wie hast du dich an diesem Tag gefühlt?';
+  const noteInput = document.getElementById('note-input');
+  if (noteInput) noteInput.placeholder = isT ? 'Was war heute besonders?' : 'Was war an diesem Tag besonders?';
+  const notesLabel = document.getElementById('notes-label');
+  if (notesLabel) notesLabel.textContent = isT ? 'Heute notiert' : 'Notiert';
+  const fastLabel = document.getElementById('fast-label');
+  if (fastLabel) fastLabel.textContent = isT ? 'Fastendauer heute' : 'Fastendauer';
+  const statPctLbl = document.getElementById('stat-pct-lbl');
+  if (statPctLbl) statPctLbl.textContent = isT ? 'heute' : 'Tag';
+}
+function refreshActiveDateViews() {
+  renderDateNav();
+  renderSportHabits();
+  renderOtherHabits();
+  renderFeelingRow();
+  renderNotes();
+  updateTodayStats();
+  loadKetoScreen();
+}
+
+// ══════════════════════════════════════════
 // CLOUD SYNC (verschlüsselt, Cloudflare KV)
 // ══════════════════════════════════════════
 // ── Supabase Config ──
@@ -802,6 +873,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initCelebrationBaselines();
   renderHeader();
   renderWeek();
+  renderDateNav();
   renderSportHabits();
   renderOtherHabits();
   renderFeelingRow();
@@ -888,7 +960,7 @@ function renderWeek() {
 function renderSportHabits() {
   const list = document.getElementById('sport-list');
   list.innerHTML = '';
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   let sportDone = 0;
 
@@ -929,7 +1001,7 @@ function renderSportHabits() {
 }
 
 function toggleSport(id) {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   if (day.sport[id]) {
     delete day.sport[id];
@@ -950,7 +1022,7 @@ function toggleSport(id) {
 
 function setSportIntensity(id, val, e) {
   e.stopPropagation();
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   if (!day.sport[id]) day.sport[id] = {};
   day.sport[id].intensity = day.sport[id].intensity === val ? null : val;
@@ -964,7 +1036,7 @@ function setSportIntensity(id, val, e) {
 function renderOtherHabits() {
   const list = document.getElementById('habits-list');
   list.innerHTML = '';
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
 
   OTHER_HABITS.forEach(h => {
@@ -976,7 +1048,7 @@ function renderOtherHabits() {
       <div class="habit-icon">${h.icon}</div>
       <div class="habit-info">
         <div class="habit-name">${h.name}</div>
-        <div class="habit-sub">${isDone ? 'Heute erledigt ✓' : h.sub}</div>
+        <div class="habit-sub">${isDone ? 'Erledigt ✓' : h.sub}</div>
       </div>
       <div class="habit-check" id="hcheck-${h.id}">
         ${isDone ? '<i class="fa-solid fa-check"></i>' : ''}
@@ -989,7 +1061,7 @@ function renderOtherHabits() {
 }
 
 function toggleHabit(id) {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   day.habits[id] = !day.habits[id];
   saveDay(key, day);
@@ -1013,7 +1085,7 @@ function renderFeelingRow() {
   const row = document.getElementById('feeling-row');
   const label = document.getElementById('feeling-val');
   if (!row) return;
-  const key = todayKey();
+  const key = activeDate;
   const val = getDay(key).feeling || null;
   row.innerHTML = '';
   for (let i = 1; i <= 10; i++) {
@@ -1029,7 +1101,7 @@ function renderFeelingRow() {
 }
 
 function setFeeling(v) {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   day.feeling = day.feeling === v ? null : v;
   saveDay(key, day);
@@ -1088,7 +1160,7 @@ function checkStreakCelebrations() {
 }
 
 function checkPerfectDay() {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   const allHabitsDone = ALL_HABITS.every(h => day.habits[h.id] || day.sport[h.id]);
   const ks = ketoScoreForDay(day);
@@ -1180,7 +1252,7 @@ function checkNewAchievements() {
 }
 
 function updateTodayStats() {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   const sportDone = SPORT_HABITS.filter(h => day.sport[h.id]).length;
   const otherDone = OTHER_HABITS.filter(h => day.habits[h.id]).length;
@@ -1195,7 +1267,7 @@ function updateTodayStats() {
 // NOTES
 // ══════════════════════════════════════════
 function renderNotes() {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   const list = document.getElementById('notes-list');
   const label = document.getElementById('notes-label');
@@ -1213,7 +1285,7 @@ function addNote() {
   const inp = document.getElementById('note-input');
   const text = inp.value.trim();
   if (!text) return;
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   if (!day.notes) day.notes = [];
   const now = new Date();
@@ -1227,7 +1299,7 @@ function addNote() {
 // KETO
 // ══════════════════════════════════════════
 function setKetoLevel(cat, val, btn) {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   if (!day.keto) day.keto = {};
   // toggle off if same
@@ -1245,7 +1317,7 @@ function setKetoLevel(cat, val, btn) {
 }
 
 function updateKetoStatus() {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   const keto = day.keto || {};
   const banner = document.getElementById('keto-status-banner');
@@ -1265,12 +1337,12 @@ function updateKetoStatus() {
     banner.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Geht so — Protein oder KH prüfen';
   } else {
     banner.className = 'keto-status bad';
-    banner.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Keto-Ziele heute verfehlt';
+    banner.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Keto-Ziele verfehlt';
   }
 }
 
 function loadKetoScreen() {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   const keto = day.keto || {};
   ['protein','carbs','calories','health'].forEach(cat => {
@@ -1291,7 +1363,7 @@ function loadKetoScreen() {
 // ══════════════════════════════════════════
 function saveFasting(val) {
   const h = parseFloat(val);
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   day.fasting = isNaN(h) ? null : h;
   saveDay(key, day);
@@ -1310,7 +1382,7 @@ function updateFastingBadge(h) {
 }
 
 function loadFasting() {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   const inp = document.getElementById('fast-input');
   if (inp) inp.value = day.fasting != null ? day.fasting : '';
@@ -1332,7 +1404,7 @@ function pillClass(dim, val) {
 }
 
 function renderMeals() {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   if (!day.meals2) day.meals2 = {};
   const container = document.getElementById('meals-sections');
@@ -1426,7 +1498,7 @@ function saveMealSlot(slotId) {
     alert('Bitte Mahlzeit benennen oder mindestens eine Zielerfüllung angeben');
     return;
   }
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   if (!day.meals2) day.meals2 = {};
   day.meals2[slotId] = { name, protein:sf.protein||null, carbs:sf.carbs||null, calories:sf.calories||null, health:sf.health||null };
@@ -1436,7 +1508,7 @@ function saveMealSlot(slotId) {
 }
 
 function skipMealSlot(slotId) {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   if (!day.meals2) day.meals2 = {};
   day.meals2[slotId] = { skipped: true };
@@ -1445,7 +1517,7 @@ function skipMealSlot(slotId) {
 }
 
 function clearMealSlot(slotId) {
-  const key = todayKey();
+  const key = activeDate;
   const day = getDay(key);
   if (!day.meals2) day.meals2 = {};
   delete day.meals2[slotId];
