@@ -220,6 +220,14 @@
     .pop { animation: pop 0.22s ease; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
     .fade-in { animation: fadeIn 0.22s ease forwards; }
+
+    .celebration-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+    .celebration-overlay.show { opacity: 1; pointer-events: auto; }
+    .celebration-card { background: var(--bg2); border: 0.5px solid var(--border-med); border-radius: var(--radius-xl); padding: 30px 26px; text-align: center; max-width: 280px; margin: 20px; transform: scale(0.85); transition: transform 0.25s cubic-bezier(.34,1.56,.64,1); }
+    .celebration-overlay.show .celebration-card { transform: scale(1); }
+    .celebration-emoji { font-size: 46px; margin-bottom: 12px; }
+    .celebration-title { font-size: 18px; font-weight: 700; color: var(--text0); margin-bottom: 6px; }
+    .celebration-sub { font-size: 13px; color: var(--text2); line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -232,9 +240,12 @@
         <h1 id="greeting">Hallo 👋</h1>
         <div class="date" id="today-date"></div>
       </div>
-      <div class="streak-pill">
-        <i class="fa-solid fa-fire"></i>
-        <span id="streak-label">0 Tage</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <div class="streak-pill">
+          <i class="fa-solid fa-fire"></i>
+          <span id="streak-label">0 Tage</span>
+        </div>
+        <div id="freeze-status" style="font-family:var(--font-mono);font-size:9px;color:var(--text2);"></div>
       </div>
     </div>
 
@@ -498,6 +509,14 @@
     <div class="nav-item" onclick="showScreen('stats',this)"><i class="fa-solid fa-chart-simple"></i><span>Verlauf</span></div>
     <div class="nav-item" onclick="showScreen('settings',this)"><i class="fa-solid fa-gear"></i><span>Einstellungen</span></div>
   </nav>
+
+  <div class="celebration-overlay" id="celebration-overlay" onclick="hideCelebration()">
+    <div class="celebration-card">
+      <div class="celebration-emoji" id="celebration-emoji">🎉</div>
+      <div class="celebration-title" id="celebration-title"></div>
+      <div class="celebration-sub" id="celebration-sub"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -755,6 +774,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Handle OAuth callback if redirected back from WHOOP
   handleOAuthCallback();
+  initCelebrationBaselines();
   renderHeader();
   renderWeek();
   renderSportHabits();
@@ -783,6 +803,10 @@ function renderHeader() {
   const streak = calcStreak();
   document.getElementById('streak-label').textContent = streak + ' Tag' + (streak===1?'':'e');
   document.getElementById('stat-streak2').textContent = streak;
+  const freezeEl = document.getElementById('freeze-status');
+  if (freezeEl) {
+    freezeEl.textContent = isFreezeUsedThisWeek() ? '🧊 Freeze genutzt' : '🧊 Freeze frei';
+  }
 }
 
 function renderWeek() {
@@ -868,6 +892,8 @@ function toggleSport(id) {
   renderWeek();
   renderHeader();
   renderStats();
+  checkStreakCelebrations();
+  checkPerfectDay();
 }
 
 function setSportIntensity(id, val, e) {
@@ -921,6 +947,8 @@ function toggleHabit(id) {
   renderWeek();
   renderHeader();
   renderStats();
+  checkStreakCelebrations();
+  checkPerfectDay();
 }
 
 // ══════════════════════════════════════════
@@ -953,6 +981,65 @@ function setFeeling(v) {
   day.feeling = day.feeling === v ? null : v;
   saveDay(key, day);
   renderFeelingRow();
+  checkPerfectDay();
+}
+
+// ══════════════════════════════════════════
+// CELEBRATIONS (Streak-Rekorde, Meilensteine, perfekte Tage)
+// ══════════════════════════════════════════
+const STREAK_MILESTONES = [3,7,14,30,50,100,150,200,365];
+
+function showCelebration(emoji, title, sub) {
+  document.getElementById('celebration-emoji').textContent = emoji;
+  document.getElementById('celebration-title').textContent = title;
+  document.getElementById('celebration-sub').textContent = sub;
+  document.getElementById('celebration-overlay').classList.add('show');
+  clearTimeout(window._celebrationTimeout);
+  window._celebrationTimeout = setTimeout(hideCelebration, 3500);
+}
+function hideCelebration() {
+  document.getElementById('celebration-overlay').classList.remove('show');
+}
+
+function initCelebrationBaselines() {
+  if (localStorage.getItem('best_streak_celebrated') === null) {
+    localStorage.setItem('best_streak_celebrated', String(calcBestStreak()));
+  }
+  if (localStorage.getItem('last_milestone_celebrated') === null) {
+    const streak = calcStreak();
+    const hit = STREAK_MILESTONES.filter(m => m <= streak).pop() || 0;
+    localStorage.setItem('last_milestone_celebrated', String(hit));
+  }
+}
+
+function checkStreakCelebrations() {
+  const streak = calcStreak();
+  if (streak === 0) return;
+  const lastMilestone = Number(localStorage.getItem('last_milestone_celebrated') || 0);
+  const hitMilestone = STREAK_MILESTONES.filter(m => m <= streak).pop();
+  if (hitMilestone && hitMilestone > lastMilestone) {
+    localStorage.setItem('last_milestone_celebrated', String(hitMilestone));
+    showCelebration('🔥', hitMilestone + ' Tage Streak!', 'Weiter so — das ist starke Konsistenz.');
+    return;
+  }
+  const lastRecord = Number(localStorage.getItem('best_streak_celebrated') || 0);
+  if (streak > lastRecord) {
+    localStorage.setItem('best_streak_celebrated', String(streak));
+    showCelebration('🏆', 'Neuer Rekord!', streak + ' Tage — dein bisher bester Streak.');
+  }
+}
+
+function checkPerfectDay() {
+  const key = todayKey();
+  const day = getDay(key);
+  const allHabitsDone = ALL_HABITS.every(h => day.habits[h.id] || day.sport[h.id]);
+  const ks = ketoScoreForDay(day);
+  const feelingGood = day.feeling && day.feeling >= 7;
+  const ketoGood = ks !== null && ks >= 6;
+  if (allHabitsDone && ketoGood && feelingGood && localStorage.getItem('perfect_day_celebrated') !== key) {
+    localStorage.setItem('perfect_day_celebrated', key);
+    showCelebration('✨', 'Perfekter Tag!', 'Habits, Keto und Gefühl — alles im grünen Bereich.');
+  }
 }
 
 function updateTodayStats() {
@@ -1016,6 +1103,7 @@ function setKetoLevel(cat, val, btn) {
   el.textContent = v ? LEVEL_LABELS[v] : '—';
   el.className = 'k-val' + (v ? ' '+ketoColor(cat,v) : '');
   updateKetoStatus();
+  checkPerfectDay();
 }
 
 function updateKetoStatus() {
@@ -1402,27 +1490,63 @@ function renderKetoScoreChart() {
   el.innerHTML = svg || `<div class="score-chart-empty">Noch keine Keto-Bewertungen im gewählten Zeitraum</div>`;
 }
 
+// Montag der Woche eines Datums, als Schlüssel für den wöchentlichen Streak-Freeze
+function getWeekKey(d) {
+  const dow = (d.getDay()+6)%7;
+  const monday = new Date(d); monday.setDate(d.getDate()-dow);
+  return monday.toISOString().split('T')[0];
+}
 function calcStreak() {
   let streak=0;
   const today = new Date();
+  const earliest = getEarliestDayKey();
+  const freezeUsedWeeks = new Set();
   for (let i=0;i<365;i++) {
     const d = new Date(today); d.setDate(today.getDate()-i);
-    const day = getDay(d.toISOString().split('T')[0]);
+    const key = d.toISOString().split('T')[0];
+    if (key < earliest) break; // vor Trackingbeginn
+    const day = getDay(key);
     const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
-    if (done>0) streak++; else if (i>0) break;
+    if (done>0) { streak++; continue; }
+    if (i===0) continue; // heute läuft noch
+    const wk = getWeekKey(d);
+    if (!freezeUsedWeeks.has(wk)) { freezeUsedWeeks.add(wk); continue; }
+    break;
   }
   return streak;
 }
 function calcBestStreak() {
   let best=0, cur=0;
   const today = new Date();
+  const earliest = getEarliestDayKey();
+  const freezeUsedWeeks = new Set();
   for (let i=364;i>=0;i--) {
     const d = new Date(today); d.setDate(today.getDate()-i);
-    const day = getDay(d.toISOString().split('T')[0]);
+    const key = d.toISOString().split('T')[0];
+    if (key < earliest) continue; // vor Trackingbeginn
+    const day = getDay(key);
     const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
-    if (done>0) { cur++; best=Math.max(best,cur); } else cur=0;
+    if (done>0) { cur++; best=Math.max(best,cur); continue; }
+    const wk = getWeekKey(d);
+    if (!freezeUsedWeeks.has(wk)) { freezeUsedWeeks.add(wk); continue; }
+    cur=0;
   }
   return best;
+}
+// Ist der wöchentliche Streak-Freeze diese Woche schon verbraucht (Mo–gestern, ohne heute)?
+function isFreezeUsedThisWeek() {
+  const today = new Date();
+  const earliest = getEarliestDayKey();
+  const dow = (today.getDay()+6)%7;
+  for (let i=1;i<=dow;i++) {
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    const key = d.toISOString().split('T')[0];
+    if (key < earliest) continue; // vor Trackingbeginn
+    const day = getDay(key);
+    const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
+    if (done===0) return true;
+  }
+  return false;
 }
 function countActiveDays() {
   const s = loadState();
