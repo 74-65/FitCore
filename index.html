@@ -204,6 +204,18 @@
     .streak-cell.l3 { background: var(--accent); }
     .streak-cell.empty { background: transparent; }
     .score-chart-empty { text-align: center; padding: 20px 0; color: var(--text2); font-size: 11px; }
+    .achv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .achv-item { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px 4px; border-radius: var(--radius-md); background: var(--bg3); border: 0.5px solid var(--border-med); text-align: center; opacity: 0.4; cursor: pointer; transition: opacity 0.15s; }
+    .achv-item.unlocked { opacity: 1; background: var(--accent-dim); border-color: rgba(200,240,96,0.35); }
+    .achv-icon { font-size: 22px; }
+    .achv-name { font-size: 9px; font-family: var(--font-mono); color: var(--text1); line-height: 1.3; }
+    .achv-item.unlocked .achv-name { color: var(--text0); font-weight: 600; }
+
+    /* GROWTH */
+    .growth-card { display: flex; align-items: center; gap: 14px; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 14px; }
+    .growth-emoji { font-size: 40px; line-height: 1; }
+    .growth-label { font-size: 14px; font-weight: 700; color: var(--text0); }
+    .growth-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text2); margin-top: 2px; }
 
     /* SETTINGS */
     .settings-section { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 14px; }
@@ -257,6 +269,14 @@
     </div>
 
     <div class="week-row" id="week-row"></div>
+
+    <div class="growth-card" id="growth-card">
+      <div class="growth-emoji" id="growth-emoji">🌰</div>
+      <div style="flex:1;">
+        <div class="growth-label" id="growth-label">Same</div>
+        <div class="growth-sub" id="growth-sub">Starte deinen ersten Tag</div>
+      </div>
+    </div>
 
     <div class="section-label">WHOOP</div>
     <div class="whoop-block" id="whoop-today-block">
@@ -419,6 +439,11 @@
     <div class="chart-card">
       <div class="chart-title">Keto-Score im Zeitverlauf</div>
       <div id="keto-score-chart"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Erfolge</div>
+      <div class="achv-grid" id="achv-grid"></div>
     </div>
   </div>
 
@@ -807,6 +832,32 @@ function renderHeader() {
   if (freezeEl) {
     freezeEl.textContent = isFreezeUsedThisWeek() ? '🧊 Freeze genutzt' : '🧊 Freeze frei';
   }
+  renderGrowth();
+}
+
+const GROWTH_STAGES = [
+  { min:0,   emoji:'🌰', label:'Same',                sub:'Starte deinen ersten Tag' },
+  { min:1,   emoji:'🌱', label:'Keimling',             sub:null },
+  { min:3,   emoji:'🌿', label:'Sprössling',           sub:null },
+  { min:7,   emoji:'🪴', label:'Junge Pflanze',        sub:null },
+  { min:14,  emoji:'🌳', label:'Baum',                 sub:null },
+  { min:30,  emoji:'🌲', label:'Stattlicher Baum',     sub:null },
+  { min:60,  emoji:'🌴', label:'Kräftiger Baum',       sub:null },
+  { min:100, emoji:'🌸', label:'Blühender Baum',       sub:null },
+  { min:200, emoji:'🌺', label:'Prächtiger Garten',    sub:null },
+];
+function renderGrowth() {
+  const streak = calcStreak();
+  let idx = 0;
+  GROWTH_STAGES.forEach((s,i) => { if (streak >= s.min) idx = i; });
+  const stage = GROWTH_STAGES[idx];
+  const next = GROWTH_STAGES[idx+1];
+  document.getElementById('growth-emoji').textContent = stage.emoji;
+  document.getElementById('growth-label').textContent = stage.label;
+  const sub = document.getElementById('growth-sub');
+  if (stage.sub) sub.textContent = stage.sub;
+  else if (next) sub.textContent = `Noch ${next.min-streak} Tag${next.min-streak===1?'':'e'} bis "${next.label}"`;
+  else sub.textContent = 'Maximale Stufe erreicht — unglaublich!';
 }
 
 function renderWeek() {
@@ -894,6 +945,7 @@ function toggleSport(id) {
   renderStats();
   checkStreakCelebrations();
   checkPerfectDay();
+  checkNewAchievements();
 }
 
 function setSportIntensity(id, val, e) {
@@ -949,6 +1001,7 @@ function toggleHabit(id) {
   renderStats();
   checkStreakCelebrations();
   checkPerfectDay();
+  checkNewAchievements();
 }
 
 // ══════════════════════════════════════════
@@ -982,6 +1035,7 @@ function setFeeling(v) {
   saveDay(key, day);
   renderFeelingRow();
   checkPerfectDay();
+  checkNewAchievements();
 }
 
 // ══════════════════════════════════════════
@@ -1009,6 +1063,10 @@ function initCelebrationBaselines() {
     const streak = calcStreak();
     const hit = STREAK_MILESTONES.filter(m => m <= streak).pop() || 0;
     localStorage.setItem('last_milestone_celebrated', String(hit));
+  }
+  if (localStorage.getItem('unlocked_achievements') === null) {
+    const already = ACHIEVEMENTS.filter(a => a.check()).map(a => a.id);
+    localStorage.setItem('unlocked_achievements', JSON.stringify(already));
   }
 }
 
@@ -1040,6 +1098,85 @@ function checkPerfectDay() {
     localStorage.setItem('perfect_day_celebrated', key);
     showCelebration('✨', 'Perfekter Tag!', 'Habits, Keto und Gefühl — alles im grünen Bereich.');
   }
+}
+
+// ══════════════════════════════════════════
+// ACHIEVEMENTS
+// ══════════════════════════════════════════
+function allDaysArray() {
+  const s = loadState();
+  return s.days ? Object.entries(s.days).map(([key,day]) => ({key, day})) : [];
+}
+function hasEverPerfectDay() {
+  return allDaysArray().some(({day}) => {
+    const allDone = ALL_HABITS.every(h => day.habits[h.id] || day.sport[h.id]);
+    const ks = ketoScoreForDay(day);
+    return allDone && ks !== null && ks >= 6 && day.feeling && day.feeling >= 7;
+  });
+}
+function hasPerfectWeek() {
+  const s = loadState();
+  const keys = s.days ? Object.keys(s.days).sort() : [];
+  if (keys.length < 7) return false;
+  const latest = keys[keys.length-1];
+  let cur = keys[0];
+  while (daysBetweenKeys(cur, latest) >= 6) {
+    let allGood = true;
+    for (let i=0;i<7;i++) {
+      const day = getDay(addDaysToKey(cur, i));
+      if (!ALL_HABITS.every(h => day.habits[h.id]||day.sport[h.id])) { allGood = false; break; }
+    }
+    if (allGood) return true;
+    cur = addDaysToKey(cur, 1);
+  }
+  return false;
+}
+function countKetoMaxDays() { return allDaysArray().filter(({day}) => ketoScoreForDay(day) === 8).length; }
+function countHabitDone(id) { return allDaysArray().filter(({day}) => day.habits[id] || day.sport[id]).length; }
+function countBothOffscreen() { return allDaysArray().filter(({day}) => day.habits.off_morgen && day.habits.off_abend).length; }
+function hasComeback() { const best = calcBestStreak(); return best >= 3 && countActiveDays() > best; }
+function countFeelingDays() { return allDaysArray().filter(({day}) => day.feeling).length; }
+
+const ACHIEVEMENTS = [
+  { id:'first_step',      icon:'🌱', name:'Erster Schritt',      desc:'Dein erster erledigter Tag',                    check: () => countActiveDays() > 0 },
+  { id:'streak_7',        icon:'🔥', name:'Eine Woche',          desc:'7 Tage Streak erreicht',                        check: () => calcBestStreak() >= 7 },
+  { id:'streak_14',       icon:'🔥', name:'Zwei Wochen',         desc:'14 Tage Streak erreicht',                       check: () => calcBestStreak() >= 14 },
+  { id:'streak_30',       icon:'🔥', name:'Ein Monat',           desc:'30 Tage Streak erreicht',                       check: () => calcBestStreak() >= 30 },
+  { id:'streak_100',      icon:'💯', name:'100 Club',            desc:'100 Tage Streak erreicht',                      check: () => calcBestStreak() >= 100 },
+  { id:'perfect_day',     icon:'✨', name:'Perfekter Tag',        desc:'Habits, Keto und Gefühl an einem Tag im grünen Bereich', check: hasEverPerfectDay },
+  { id:'perfect_week',    icon:'🏅', name:'Perfekte Woche',      desc:'7 Tage in Folge alle Habits erledigt',          check: hasPerfectWeek },
+  { id:'keto_master',     icon:'🥑', name:'Keto-Meister',        desc:'5 Tage mit vollem Keto-Score (8/8)',            check: () => countKetoMaxDays() >= 5 },
+  { id:'reader',          icon:'📚', name:'Bücherwurm',          desc:'20x Lesen abgehakt',                            check: () => countHabitDone('lesen') >= 20 },
+  { id:'hydrated',        icon:'💧', name:'Wasserfall',          desc:'30x Wasser abgehakt',                           check: () => countHabitDone('wasser') >= 30 },
+  { id:'offscreen_champ', icon:'📵', name:'Offscreen-Champion',  desc:'14x beide Offscreen-Zeiten am selben Tag',      check: () => countBothOffscreen() >= 14 },
+  { id:'comeback',        icon:'💪', name:'Comeback',            desc:'Nach einer Pause wieder durchgestartet',        check: hasComeback },
+  { id:'whoop_connected', icon:'⌚', name:'Vernetzt',            desc:'WHOOP verbunden',                               check: () => !!getWhoopTokens() },
+  { id:'mood_tracker',    icon:'😊', name:'Selbstreflexion',     desc:'10x Tagesgefühl bewertet',                      check: () => countFeelingDays() >= 10 },
+];
+
+function renderAchievements() {
+  const grid = document.getElementById('achv-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  ACHIEVEMENTS.forEach(a => {
+    const unlocked = a.check();
+    const el = document.createElement('div');
+    el.className = 'achv-item' + (unlocked ? ' unlocked' : '');
+    el.innerHTML = `<div class="achv-icon">${unlocked ? a.icon : '🔒'}</div><div class="achv-name">${a.name}</div>`;
+    el.onclick = () => showCelebration(unlocked ? a.icon : '🔒', a.name, a.desc);
+    grid.appendChild(el);
+  });
+}
+
+function checkNewAchievements() {
+  const unlocked = JSON.parse(localStorage.getItem('unlocked_achievements') || '[]');
+  ACHIEVEMENTS.forEach(a => {
+    if (a.check() && !unlocked.includes(a.id)) {
+      unlocked.push(a.id);
+      localStorage.setItem('unlocked_achievements', JSON.stringify(unlocked));
+      showCelebration(a.icon, 'Erfolg freigeschaltet!', a.name + ' — ' + a.desc);
+    }
+  });
 }
 
 function updateTodayStats() {
@@ -1104,6 +1241,7 @@ function setKetoLevel(cat, val, btn) {
   el.className = 'k-val' + (v ? ' '+ketoColor(cat,v) : '');
   updateKetoStatus();
   checkPerfectDay();
+  checkNewAchievements();
 }
 
 function updateKetoStatus() {
@@ -1384,6 +1522,7 @@ function renderStats() {
   renderStreakGrid();
   renderFeelingChart();
   renderKetoScoreChart();
+  renderAchievements();
 }
 
 function renderBarChart() {
