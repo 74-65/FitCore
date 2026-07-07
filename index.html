@@ -178,8 +178,14 @@
     /* STATS */
     .chart-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
     .chart-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--text2); text-transform: uppercase; margin-bottom: 12px; }
-    .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 80px; }
+    .range-row { display: flex; gap: 4px; margin-bottom: 14px; }
+    .range-btn { flex: 1; text-align: center; padding: 7px 4px; border: 0.5px solid var(--border-med); border-radius: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text2); background: var(--bg2); cursor: pointer; transition: all 0.15s; }
+    .range-btn.active { background: var(--accent); color: var(--bg0); border-color: var(--accent); font-weight: 700; }
+    .bar-chart-scroll { overflow-x: auto; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 80px; min-width: 100%; }
+    .bar-chart.dense { gap: 2px; }
     .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar-chart.dense .bar-col { flex: none; width: 6px; }
     .bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 3px; background: var(--bg3); transition: height 0.4s ease; }
     .bar.done { background: var(--accent); }
     .bar-lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text2); }
@@ -190,11 +196,14 @@
     .prog-bg { flex: 1; height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
     .prog-fill { height: 100%; border-radius: 3px; background: var(--accent); }
     .prog-val { font-family: var(--font-mono); font-size: 10px; color: var(--text2); width: 28px; text-align: right; }
-    .streak-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-bottom: 10px; }
-    .streak-cell { aspect-ratio: 1; border-radius: 4px; background: var(--bg3); }
+    .streak-grid-scroll { overflow-x: auto; }
+    .streak-grid { display: grid; gap: 4px; margin-bottom: 10px; }
+    .streak-cell { width: 14px; height: 14px; border-radius: 4px; background: var(--bg3); }
     .streak-cell.l1 { background: rgba(200,240,96,0.2); }
     .streak-cell.l2 { background: rgba(200,240,96,0.45); }
     .streak-cell.l3 { background: var(--accent); }
+    .streak-cell.empty { background: transparent; }
+    .score-chart-empty { text-align: center; padding: 20px 0; color: var(--text2); font-size: 11px; }
 
     /* SETTINGS */
     .settings-section { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 14px; }
@@ -369,19 +378,36 @@
       <div class="stat-card"><div class="val" id="sv-week">0%</div><div class="lbl">Ø Woche</div></div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-title">Habits diese Woche</div>
-      <div class="bar-chart" id="bar-chart"></div>
+    <div class="range-row" id="stats-range-row">
+      <div class="range-btn" data-range="7" onclick="setStatsRange('7',this)">7T</div>
+      <div class="range-btn active" data-range="30" onclick="setStatsRange('30',this)">30T</div>
+      <div class="range-btn" data-range="90" onclick="setStatsRange('90',this)">90T</div>
+      <div class="range-btn" data-range="all" onclick="setStatsRange('all',this)">Alle</div>
     </div>
 
     <div class="chart-card">
-      <div class="chart-title">Habit-Aufschlüsselung (7 Tage)</div>
+      <div class="chart-title" id="bar-chart-title">Habits im Zeitverlauf</div>
+      <div class="bar-chart-scroll"><div class="bar-chart" id="bar-chart"></div></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title" id="habit-breakdown-title">Habit-Aufschlüsselung</div>
       <div class="prog-row" id="habit-breakdown"></div>
     </div>
 
     <div class="chart-card">
-      <div class="chart-title">Aktivität letzte 28 Tage</div>
-      <div class="streak-grid" id="streak-grid"></div>
+      <div class="chart-title" id="heatmap-title">Aktivität</div>
+      <div class="streak-grid-scroll"><div class="streak-grid" id="streak-grid"></div></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Tagesgefühl im Zeitverlauf</div>
+      <div id="feeling-chart"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Keto-Score im Zeitverlauf</div>
+      <div id="keto-score-chart"></div>
     </div>
   </div>
 
@@ -1205,6 +1231,48 @@ function clearMealSlot(slotId) {
 // ══════════════════════════════════════════
 // STATS
 // ══════════════════════════════════════════
+let statsRange = 30;
+
+function setStatsRange(r, btn) {
+  statsRange = r === 'all' ? 'all' : Number(r);
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderStats();
+}
+
+function addDaysToKey(key, n) {
+  const d = new Date(key + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().split('T')[0];
+}
+function daysBetweenKeys(key1, key2) {
+  return Math.round((new Date(key2+'T00:00:00Z') - new Date(key1+'T00:00:00Z')) / 86400000);
+}
+function getEarliestDayKey() {
+  const s = loadState();
+  const keys = s.days ? Object.keys(s.days) : [];
+  return keys.length ? keys.sort()[0] : todayKey();
+}
+function getRangeKeys(range) {
+  const today = todayKey();
+  const startKey = range === 'all' ? getEarliestDayKey() : addDaysToKey(today, -(range-1));
+  const n = Math.max(0, daysBetweenKeys(startKey, today));
+  const keys = [];
+  for (let i=0;i<=n;i++) keys.push(addDaysToKey(startKey, i));
+  return keys;
+}
+function rangeLabel() { return statsRange === 'all' ? 'gesamter Zeitraum' : statsRange + ' Tage'; }
+function ketoScoreForDay(day) {
+  const keto = day.keto || {};
+  if (Object.values(keto).filter(Boolean).length === 0) return null;
+  let score = 0;
+  if (keto.protein === 'high') score += 2; else if (keto.protein === 'mid') score += 1;
+  if (keto.carbs === 'low') score += 2; else if (keto.carbs === 'mid') score += 1;
+  if (keto.calories === 'high') score += 2; else if (keto.calories === 'mid') score += 1;
+  if (keto.health === 'high') score += 2; else if (keto.health === 'mid') score += 1;
+  return score;
+}
+
 function renderStats() {
   const streak = calcStreak();
   document.getElementById('sv-streak').textContent = streak;
@@ -1220,51 +1288,57 @@ function renderStats() {
     weekTotal += done/ALL_HABITS.length;
   }
   document.getElementById('sv-week').textContent = Math.round(weekTotal/7*100)+'%';
+  document.getElementById('bar-chart-title').textContent = 'Habits (' + rangeLabel() + ')';
+  document.getElementById('habit-breakdown-title').textContent = 'Habit-Aufschlüsselung (' + rangeLabel() + ')';
+  document.getElementById('heatmap-title').textContent = 'Aktivität (' + rangeLabel() + ')';
   renderBarChart();
   renderHabitBreakdown();
   renderStreakGrid();
+  renderFeelingChart();
+  renderKetoScoreChart();
 }
 
 function renderBarChart() {
   const chart = document.getElementById('bar-chart');
   chart.innerHTML = '';
-  const today = new Date();
+  const keys = getRangeKeys(statsRange);
+  const dense = keys.length > 14;
+  chart.className = 'bar-chart' + (dense ? ' dense' : '');
   const dayNames = ['So','Mo','Di','Mi','Do','Fr','Sa'];
   const maxH = 72;
-  for (let i=6;i>=0;i--) {
-    const d = new Date(today); d.setDate(today.getDate()-i);
-    const key = d.toISOString().split('T')[0];
+  keys.forEach((key, idx) => {
     const day = getDay(key);
     const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
     const pct = done/ALL_HABITS.length;
     const h = Math.max(3, Math.round(pct*maxH));
-    const isToday = i===0;
+    const isToday = idx === keys.length-1;
     const col = document.createElement('div');
     col.className = 'bar-col';
-    col.innerHTML = `<div class="bar${done>0?' done':''}" style="height:${h}px;opacity:${isToday?1:0.6};"></div><div class="bar-lbl${isToday?' today':''}">${dayNames[d.getDay()]}</div>`;
+    const dow = new Date(key+'T00:00:00Z').getUTCDay();
+    const lbl = dense ? '' : `<div class="bar-lbl${isToday?' today':''}">${dayNames[dow]}</div>`;
+    col.innerHTML = `<div class="bar${done>0?' done':''}" style="height:${h}px;opacity:${isToday?1:0.6};" title="${key}"></div>${lbl}`;
     chart.appendChild(col);
-  }
+  });
 }
 
 function renderHabitBreakdown() {
   const container = document.getElementById('habit-breakdown');
   container.innerHTML = '';
-  const today = new Date();
+  const keys = getRangeKeys(statsRange);
   ALL_HABITS.forEach(h => {
     let count = 0;
-    for (let i=0;i<7;i++) {
-      const d = new Date(today); d.setDate(today.getDate()-i);
-      const day = getDay(d.toISOString().split('T')[0]);
+    keys.forEach(key => {
+      const day = getDay(key);
       if (day.habits[h.id] || day.sport[h.id]) count++;
-    }
-    const pct = count/7;
+    });
+    const pct = count/keys.length;
     const color = pct>=0.7?'var(--accent)':pct>=0.4?'var(--amber)':'var(--red)';
     const row = document.createElement('div');
     row.className = 'prog-item';
     row.innerHTML = `
       <div class="prog-lbl">${h.icon} ${h.name}</div>
       <div class="prog-bg"><div class="prog-fill" style="width:${Math.round(pct*100)}%;background:${color};"></div></div>
-      <div class="prog-val">${count}/7</div>`;
+      <div class="prog-val">${count}/${keys.length}</div>`;
     container.appendChild(row);
   });
 }
@@ -1272,18 +1346,60 @@ function renderHabitBreakdown() {
 function renderStreakGrid() {
   const grid = document.getElementById('streak-grid');
   grid.innerHTML = '';
-  const today = new Date();
-  for (let i=27;i>=0;i--) {
-    const d = new Date(today); d.setDate(today.getDate()-i);
-    const key = d.toISOString().split('T')[0];
-    const day = getDay(key);
-    const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
-    const pct = done/ALL_HABITS.length;
-    const cls = pct>=0.75?'l3':pct>=0.4?'l2':pct>0?'l1':'';
+  const keys = getRangeKeys(statsRange);
+  const firstDow = (new Date(keys[0]+'T00:00:00Z').getUTCDay()+6)%7; // 0=Mo..6=So
+  const padded = new Array(firstDow).fill(null).concat(keys);
+  const cols = Math.ceil(padded.length/7);
+  grid.style.gridTemplateColumns = `repeat(${cols}, 14px)`;
+  grid.style.gridTemplateRows = `repeat(7, 14px)`;
+  grid.style.gridAutoFlow = 'column';
+  padded.forEach(key => {
     const cell = document.createElement('div');
-    cell.className = 'streak-cell'+(cls?' '+cls:'');
+    if (key) {
+      const day = getDay(key);
+      const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
+      const pct = done/ALL_HABITS.length;
+      const cls = pct>=0.75?'l3':pct>=0.4?'l2':pct>0?'l1':'';
+      cell.className = 'streak-cell'+(cls?' '+cls:'');
+      cell.title = key;
+    } else {
+      cell.className = 'streak-cell empty';
+    }
     grid.appendChild(cell);
-  }
+  });
+}
+
+function buildLineChartSvg(keys, valueFn, minVal, maxVal, color) {
+  const w = 300, h = 80, pad = 8;
+  const pts = [];
+  keys.forEach((k, i) => {
+    const v = valueFn(k);
+    if (v !== null && v !== undefined) pts.push({ x: i, y: v });
+  });
+  if (pts.length < 2) return null;
+  const xMax = keys.length - 1;
+  const scaleX = x => pad + (xMax>0 ? (x/xMax) : 0) * (w - 2*pad);
+  const scaleY = y => h - pad - ((y-minVal)/(maxVal-minVal)) * (h - 2*pad);
+  const pathD = pts.map((p,i) => (i===0?'M':'L') + scaleX(p.x).toFixed(1) + ',' + scaleY(p.y).toFixed(1)).join(' ');
+  const circles = pts.map(p => `<circle cx="${scaleX(p.x).toFixed(1)}" cy="${scaleY(p.y).toFixed(1)}" r="2" fill="${color}"/>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;display:block;">
+    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="1.5"/>
+    ${circles}
+  </svg>`;
+}
+
+function renderFeelingChart() {
+  const el = document.getElementById('feeling-chart');
+  const keys = getRangeKeys(statsRange);
+  const svg = buildLineChartSvg(keys, k => getDay(k).feeling || null, 1, 10, 'var(--blue-text)');
+  el.innerHTML = svg || `<div class="score-chart-empty">Noch keine Bewertungen im gewählten Zeitraum</div>`;
+}
+
+function renderKetoScoreChart() {
+  const el = document.getElementById('keto-score-chart');
+  const keys = getRangeKeys(statsRange);
+  const svg = buildLineChartSvg(keys, k => ketoScoreForDay(getDay(k)), 0, 8, 'var(--accent)');
+  el.innerHTML = svg || `<div class="score-chart-empty">Noch keine Keto-Bewertungen im gewählten Zeitraum</div>`;
 }
 
 function calcStreak() {
