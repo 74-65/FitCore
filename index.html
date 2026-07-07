@@ -207,6 +207,12 @@
     .streak-cell.l3 { background: var(--accent); }
     .streak-cell.empty { background: transparent; }
     .score-chart-empty { text-align: center; padding: 20px 0; color: var(--text2); font-size: 11px; }
+    .corr-item { margin-bottom: 16px; }
+    .corr-item:last-child { margin-bottom: 0; }
+    .corr-label { font-size: 12px; color: var(--text1); margin-bottom: 5px; }
+    .corr-bar-bg { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+    .corr-bar-fill { height: 100%; border-radius: 3px; }
+    .corr-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text2); }
     .achv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .achv-item { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px 4px; border-radius: var(--radius-md); background: var(--bg3); border: 0.5px solid var(--border-med); text-align: center; opacity: 0.4; cursor: pointer; transition: opacity 0.15s; }
     .achv-item.unlocked { opacity: 1; background: var(--accent-dim); border-color: rgba(200,240,96,0.35); }
@@ -467,6 +473,16 @@
     <div class="chart-card">
       <div class="chart-title">Keto-Score im Zeitverlauf</div>
       <div id="keto-score-chart"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">WHOOP Recovery im Zeitverlauf</div>
+      <div id="whoop-history-chart"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Zusammenhänge</div>
+      <div id="correlations-list"></div>
     </div>
 
     <div class="chart-card">
@@ -1661,6 +1677,8 @@ function renderStats() {
   renderStreakGrid();
   renderFeelingChart();
   renderKetoScoreChart();
+  renderWhoopHistoryChart();
+  renderCorrelations();
   renderAchievements();
 }
 
@@ -1766,6 +1784,65 @@ function renderKetoScoreChart() {
   const keys = getRangeKeys(statsRange);
   const svg = buildLineChartSvg(keys, k => ketoScoreForDay(getDay(k)), 0, 8, 'var(--accent)');
   el.innerHTML = svg || `<div class="score-chart-empty">Noch keine Keto-Bewertungen im gewählten Zeitraum</div>`;
+}
+
+function renderWhoopHistoryChart() {
+  const el = document.getElementById('whoop-history-chart');
+  if (!el) return;
+  const keys = getRangeKeys(statsRange);
+  const svg = buildLineChartSvg(keys, k => { const w = getDay(k).whoop; return (w && w.recovery_score != null) ? w.recovery_score : null; }, 0, 100, 'var(--blue-text)');
+  el.innerHTML = svg || `<div class="score-chart-empty">Noch keine WHOOP-Historie im gewählten Zeitraum — wird ab jetzt bei jedem Sync automatisch mitgeschrieben</div>`;
+}
+
+// ══════════════════════════════════════════
+// KORRELATIONEN
+// ══════════════════════════════════════════
+function habitPctForDay(day) {
+  const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
+  return done / ALL_HABITS.length * 100;
+}
+function pearsonCorrelation(pairs) {
+  const n = pairs.length;
+  if (n < 3) return null;
+  const xs = pairs.map(p=>p[0]), ys = pairs.map(p=>p[1]);
+  const mean = a => a.reduce((s,v)=>s+v,0)/a.length;
+  const mx = mean(xs), my = mean(ys);
+  let num=0, dx2=0, dy2=0;
+  for (let i=0;i<n;i++) { const dx=xs[i]-mx, dy=ys[i]-my; num+=dx*dy; dx2+=dx*dx; dy2+=dy*dy; }
+  if (dx2===0||dy2===0) return null;
+  return num/Math.sqrt(dx2*dy2);
+}
+function corrInterpretation(r) {
+  const a = Math.abs(r);
+  if (a < 0.2) return 'Kaum ein Zusammenhang erkennbar';
+  const strength = a>=0.7 ? 'Starker' : a>=0.4 ? 'Mittlerer' : 'Schwacher';
+  const dir = r>=0 ? 'positiver' : 'negativer';
+  return `${strength} ${dir} Zusammenhang`;
+}
+const CORRELATIONS = [
+  { label:'Vibe Score ↔ WHOOP Recovery',    get: day => [day.feeling, day.whoop && day.whoop.recovery_score] },
+  { label:'Vibe Score ↔ Keto-Score',        get: day => [day.feeling, ketoScoreForDay(day)] },
+  { label:'Vibe Score ↔ Habits erledigt',   get: day => [day.feeling, habitPctForDay(day)] },
+  { label:'WHOOP Recovery ↔ Habits erledigt', get: day => [day.whoop && day.whoop.recovery_score, habitPctForDay(day)] },
+];
+function renderCorrelations() {
+  const container = document.getElementById('correlations-list');
+  if (!container) return;
+  const days = allDaysArray().map(({day}) => day);
+  container.innerHTML = CORRELATIONS.map(c => {
+    const pairs = days.map(c.get).filter(p => p[0]!=null && p[1]!=null);
+    const r = pearsonCorrelation(pairs);
+    if (r === null) {
+      return `<div class="corr-item"><div class="corr-label">${c.label}</div><div class="corr-meta">Noch nicht genug gemeinsame Tage (mind. 3 nötig, aktuell ${pairs.length})</div></div>`;
+    }
+    const pct = Math.round(Math.abs(r)*100);
+    const color = r >= 0 ? 'var(--accent)' : 'var(--red)';
+    return `<div class="corr-item">
+      <div class="corr-label">${c.label}</div>
+      <div class="corr-bar-bg"><div class="corr-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+      <div class="corr-meta">r = ${r.toFixed(2)} — ${corrInterpretation(r)} (n=${pairs.length})</div>
+    </div>`;
+  }).join('');
 }
 
 // Montag der Woche eines Datums, als Schlüssel für den wöchentlichen Streak-Freeze
@@ -1989,9 +2066,24 @@ async function whoopSync() {
     };
 
     saveWhoopData(data);
+
+    // Tages-Snapshot für Historie/Korrelationen mitschreiben
+    const todayDay = getDay(todayKey());
+    todayDay.whoop = {
+      recovery_score: data.recovery_score,
+      hrv_rmssd: data.hrv_rmssd,
+      rhr: data.rhr,
+      strain: data.strain,
+      sleep_min: data.sleep_min,
+      sleep_performance: data.sleep_performance,
+      spo2: data.spo2,
+    };
+    saveDay(todayKey(), todayDay);
+
     updateSyncStatus('ok');
     renderWhoopBlock();
     updateWhoopSettings();
+    if (typeof renderStats === 'function' && document.getElementById('screen-stats').classList.contains('active')) renderStats();
   } catch(e) {
     updateSyncStatus('error');
   }
