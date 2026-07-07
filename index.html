@@ -137,6 +137,10 @@
     .active-high { background: var(--accent); color: var(--bg0); border-color: var(--accent); font-weight: 600; }
     .active-mid  { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
     .active-low  { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+    .score-row { display: flex; gap: 4px; }
+    .score-btn { flex: 1; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border: 0.5px solid var(--border-med); border-radius: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text2); background: var(--bg3); cursor: pointer; transition: all 0.12s; }
+    .score-btn:active { transform: scale(0.9); }
+    .score-btn.active { color: var(--bg0); font-weight: 700; }
     /* carbs: low = good */
     .keto-card[data-cat="carbs"] .active-low { background: var(--accent-dim); color: var(--accent); border-color: rgba(200,240,96,0.4); }
     .keto-card[data-cat="carbs"] .active-high { background: var(--red-dim); color: var(--red); border-color: var(--red); }
@@ -253,6 +257,15 @@
 
     <div class="section-label">Habits</div>
     <div class="habits-list" id="habits-list"></div>
+
+    <div class="section-label">Tagesgefühl</div>
+    <div class="add-meal-card" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:13px;font-weight:600;color:var(--text0);">Wie fühlst du dich heute?</span>
+        <span id="feeling-val" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text2);">—</span>
+      </div>
+      <div class="score-row" id="feeling-row"></div>
+    </div>
 
     <div class="divider"></div>
     <div class="section-label">Notiz</div>
@@ -718,6 +731,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderWeek();
   renderSportHabits();
   renderOtherHabits();
+  renderFeelingRow();
   renderNotes();
   renderStats();
   renderWhoopBlock();
@@ -879,6 +893,38 @@ function toggleHabit(id) {
   renderWeek();
   renderHeader();
   renderStats();
+}
+
+// ══════════════════════════════════════════
+// TAGESGEFÜHL
+// ══════════════════════════════════════════
+function feelingColor(v) { return v<=3 ? 'var(--red)' : v<=6 ? 'var(--amber)' : 'var(--accent)'; }
+
+function renderFeelingRow() {
+  const row = document.getElementById('feeling-row');
+  const label = document.getElementById('feeling-val');
+  if (!row) return;
+  const key = todayKey();
+  const val = getDay(key).feeling || null;
+  row.innerHTML = '';
+  for (let i = 1; i <= 10; i++) {
+    const btn = document.createElement('div');
+    btn.className = 'score-btn' + (val === i ? ' active' : '');
+    btn.textContent = i;
+    if (val === i) { btn.style.background = feelingColor(i); btn.style.borderColor = feelingColor(i); }
+    btn.onclick = () => setFeeling(i);
+    row.appendChild(btn);
+  }
+  label.textContent = val ? val + '/10' : '—';
+  label.style.color = val ? feelingColor(val) : 'var(--text2)';
+}
+
+function setFeeling(v) {
+  const key = todayKey();
+  const day = getDay(key);
+  day.feeling = day.feeling === v ? null : v;
+  saveDay(key, day);
+  renderFeelingRow();
 }
 
 function updateTodayStats() {
