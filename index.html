@@ -184,6 +184,12 @@
     .range-row { display: flex; gap: 4px; margin-bottom: 14px; }
     .range-btn { flex: 1; text-align: center; padding: 7px 4px; border: 0.5px solid var(--border-med); border-radius: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text2); background: var(--bg2); cursor: pointer; transition: all 0.15s; }
     .range-btn.active { background: var(--accent); color: var(--bg0); border-color: var(--accent); font-weight: 700; }
+    .metric-tab-row { display: flex; gap: 3px; margin-bottom: 12px; overflow-x: auto; }
+    .metric-tab { flex: 1; text-align: center; padding: 6px 3px; border: 0.5px solid var(--border-med); border-radius: 7px; font-family: var(--font-mono); font-size: 10px; color: var(--text2); background: var(--bg3); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .metric-tab.active { background: var(--blue-dim); color: var(--blue-text); border-color: rgba(96,184,240,0.35); font-weight: 700; }
+    .insight-item { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 12px; color: var(--text1); line-height: 1.5; }
+    .insight-item:last-child { border-bottom: none; }
+    .insight-item i { color: var(--accent); margin-top: 2px; flex-shrink: 0; }
     .bar-chart-scroll { overflow-x: auto; }
     .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 80px; min-width: 100%; }
     .bar-chart.dense { gap: 2px; }
@@ -476,8 +482,20 @@
     </div>
 
     <div class="chart-card">
-      <div class="chart-title">WHOOP Recovery im Zeitverlauf</div>
+      <div class="chart-title">WHOOP Trends</div>
+      <div class="metric-tab-row" id="whoop-metric-row">
+        <div class="metric-tab active" data-metric="recovery" onclick="setWhoopMetric('recovery',this)">Recovery</div>
+        <div class="metric-tab" data-metric="sleep" onclick="setWhoopMetric('sleep',this)">Schlaf</div>
+        <div class="metric-tab" data-metric="hrv" onclick="setWhoopMetric('hrv',this)">HRV</div>
+        <div class="metric-tab" data-metric="rhr" onclick="setWhoopMetric('rhr',this)">RHR</div>
+        <div class="metric-tab" data-metric="strain" onclick="setWhoopMetric('strain',this)">Strain</div>
+      </div>
       <div id="whoop-history-chart"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Insights</div>
+      <div id="insights-list"></div>
     </div>
 
     <div class="chart-card">
@@ -1678,6 +1696,7 @@ function renderStats() {
   renderFeelingChart();
   renderKetoScoreChart();
   renderWhoopHistoryChart();
+  renderInsights();
   renderCorrelations();
   renderAchievements();
 }
@@ -1786,11 +1805,26 @@ function renderKetoScoreChart() {
   el.innerHTML = svg || `<div class="score-chart-empty">Noch keine Keto-Bewertungen im gewählten Zeitraum</div>`;
 }
 
+let whoopMetric = 'recovery';
+const WHOOP_METRICS = {
+  recovery: { min:0,   max:100, get: w => w && w.recovery_score != null ? w.recovery_score : null },
+  sleep:    { min:0,   max:12,  get: w => w && w.sleep_min != null ? Math.round(w.sleep_min/60*10)/10 : null },
+  hrv:      { min:0,   max:150, get: w => w && w.hrv_rmssd != null ? w.hrv_rmssd : null },
+  rhr:      { min:35,  max:90,  get: w => w && w.rhr != null ? w.rhr : null },
+  strain:   { min:0,   max:21,  get: w => w && w.strain != null ? w.strain : null },
+};
+function setWhoopMetric(m, btn) {
+  whoopMetric = m;
+  document.querySelectorAll('#whoop-metric-row .metric-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderWhoopHistoryChart();
+}
 function renderWhoopHistoryChart() {
   const el = document.getElementById('whoop-history-chart');
   if (!el) return;
   const keys = getRangeKeys(statsRange);
-  const svg = buildLineChartSvg(keys, k => { const w = getDay(k).whoop; return (w && w.recovery_score != null) ? w.recovery_score : null; }, 0, 100, 'var(--blue-text)');
+  const m = WHOOP_METRICS[whoopMetric];
+  const svg = buildLineChartSvg(keys, k => m.get(getDay(k).whoop), m.min, m.max, 'var(--blue-text)');
   el.innerHTML = svg || `<div class="score-chart-empty">Noch keine WHOOP-Historie im gewählten Zeitraum — wird ab jetzt bei jedem Sync automatisch mitgeschrieben</div>`;
 }
 
@@ -1843,6 +1877,71 @@ function renderCorrelations() {
       <div class="corr-meta">r = ${r.toFixed(2)} — ${corrInterpretation(r)} (n=${pairs.length})</div>
     </div>`;
   }).join('');
+}
+
+// ══════════════════════════════════════════
+// INSIGHTS
+// ══════════════════════════════════════════
+function generateInsights() {
+  const insights = [];
+  const entries = allDaysArray(); // [{key, day}]
+
+  // 1. Stärkster Zusammenhang (nur ab mittelstark)
+  let best = null;
+  CORRELATIONS.forEach(c => {
+    const pairs = entries.map(({day}) => c.get(day)).filter(p => p[0]!=null && p[1]!=null);
+    const r = pearsonCorrelation(pairs);
+    if (r !== null && Math.abs(r) >= 0.4 && (!best || Math.abs(r) > Math.abs(best.r))) {
+      best = { label: c.label, r, n: pairs.length };
+    }
+  });
+  if (best) {
+    insights.push(`${corrInterpretation(best.r)} zwischen ${best.label} (r=${best.r.toFixed(2)}, ${best.n} Tage).`);
+  }
+
+  // 2. Stärkster/schwächster Wochentag für Habits
+  const dayNames = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  const sums = [0,0,0,0,0,0,0], counts = [0,0,0,0,0,0,0];
+  entries.forEach(({key,day}) => {
+    const dow = new Date(key+'T00:00:00Z').getUTCDay();
+    sums[dow] += habitPctForDay(day);
+    counts[dow]++;
+  });
+  const avgs = sums.map((s,i) => counts[i] >= 2 ? s/counts[i] : null).map((v,i) => ({v,i})).filter(x => x.v!=null);
+  if (avgs.length >= 3) {
+    const bestDay = avgs.reduce((a,b) => b.v>a.v?b:a);
+    const worstDay = avgs.reduce((a,b) => b.v<a.v?b:a);
+    if (bestDay.i !== worstDay.i) {
+      insights.push(`${dayNames[bestDay.i]} ist bisher dein stärkster Wochentag (Ø ${Math.round(bestDay.v)}% Habits erledigt), ${dayNames[worstDay.i]} dein schwächster (Ø ${Math.round(worstDay.v)}%).`);
+    }
+  }
+
+  // 3. Trend: Vibe Score erste vs. zweite Hälfte des gewählten Zeitraums
+  const keys = getRangeKeys(statsRange);
+  if (keys.length >= 6) {
+    const half = Math.floor(keys.length/2);
+    const firstVals = keys.slice(0,half).map(k => getDay(k).feeling).filter(v => v!=null);
+    const secondVals = keys.slice(half).map(k => getDay(k).feeling).filter(v => v!=null);
+    if (firstVals.length>=2 && secondVals.length>=2) {
+      const avg = a => a.reduce((s,v)=>s+v,0)/a.length;
+      const a1 = avg(firstVals), a2 = avg(secondVals);
+      if (Math.abs(a2-a1) >= 0.5) {
+        insights.push(`Dein Vibe Score ${a2>a1?'steigt':'sinkt'} im gewählten Zeitraum (Ø ${a1.toFixed(1)} → ${a2.toFixed(1)}).`);
+      }
+    }
+  }
+
+  return insights;
+}
+function renderInsights() {
+  const container = document.getElementById('insights-list');
+  if (!container) return;
+  const insights = generateInsights();
+  if (insights.length === 0) {
+    container.innerHTML = `<div class="score-chart-empty">Noch nicht genug Daten für Insights — trag ein paar Tage mehr ein</div>`;
+    return;
+  }
+  container.innerHTML = insights.map(text => `<div class="insight-item"><i class="fa-solid fa-lightbulb"></i><span>${text}</span></div>`).join('');
 }
 
 // Montag der Woche eines Datums, als Schlüssel für den wöchentlichen Streak-Freeze
