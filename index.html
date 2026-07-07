@@ -103,6 +103,9 @@
     .note-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
     .note-text { font-size: 13px; color: var(--text1); line-height: 1.5; }
     .note-time { font-family: var(--font-mono); font-size: 10px; color: var(--text2); margin-top: 2px; }
+    .note-actions { display: flex; gap: 12px; align-items: flex-start; flex-shrink: 0; padding-top: 2px; }
+    .note-actions i { font-size: 12px; color: var(--text2); cursor: pointer; }
+    .note-actions i:hover { color: var(--text0); }
 
     /* WHOOP BLOCK */
     .whoop-block { background: var(--blue-dim); border: 0.5px solid rgba(96,184,240,0.2); border-radius: var(--radius-lg); padding: 13px 15px; margin-bottom: 14px; }
@@ -236,6 +239,9 @@
     .settings-row-name { font-size: 13px; font-weight: 500; color: var(--text0); }
     .settings-row-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text2); margin-top: 1px; }
     .coming-badge { font-family: var(--font-mono); font-size: 10px; padding: 3px 7px; border-radius: 5px; background: var(--bg3); color: var(--text2); border: 0.5px solid var(--border); }
+    .goal-stepper { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .goal-btn { width: 26px; height: 26px; border-radius: 7px; background: var(--bg3); border: 0.5px solid var(--border-med); display: flex; align-items: center; justify-content: center; color: var(--text1); cursor: pointer; font-size: 14px; font-weight: 700; }
+    .goal-val { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text0); min-width: 12px; text-align: center; }
     .version-label { text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--text2); letter-spacing: 0.06em; padding: 6px 0 14px; }
 
     @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.06)} 100%{transform:scale(1)} }
@@ -327,7 +333,7 @@
     <div class="section-label">Notiz</div>
     <div class="note-area">
       <textarea class="note-input" id="note-input" rows="2" placeholder="Was war heute besonders?"></textarea>
-      <button class="note-submit" onclick="addNote()">Speichern</button>
+      <button class="note-submit" id="note-save-btn" onclick="addNote()">Speichern</button>
     </div>
     <div class="section-label" id="notes-label" style="display:none;margin-top:14px;">Heute notiert</div>
     <div class="notes-list" id="notes-list"></div>
@@ -504,29 +510,7 @@
     </div>
 
     <div class="section-label">Wochenziele Sport</div>
-    <div class="settings-section">
-      <div class="settings-row">
-        <div class="settings-row-left">
-          <div class="settings-row-icon" style="background:var(--bg3);">🎾</div>
-          <div><div class="settings-row-name">Tennis</div><div class="settings-row-sub">Wochenziel noch nicht gesetzt</div></div>
-        </div>
-        <span class="coming-badge">bald</span>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-left">
-          <div class="settings-row-icon" style="background:var(--bg3);">🏋️</div>
-          <div><div class="settings-row-name">Krafttraining</div><div class="settings-row-sub">Wochenziel noch nicht gesetzt</div></div>
-        </div>
-        <span class="coming-badge">bald</span>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-left">
-          <div class="settings-row-icon" style="background:var(--bg3);">🫀</div>
-          <div><div class="settings-row-name">Cardio</div><div class="settings-row-sub">Wochenziel noch nicht gesetzt</div></div>
-        </div>
-        <span class="coming-badge">bald</span>
-      </div>
-    </div>
+    <div class="settings-section" id="sport-goals-section"></div>
 
     <div class="section-label">Daten</div>
     <div class="settings-section">
@@ -678,6 +662,9 @@ function renderDateNav() {
   if (statPctLbl) statPctLbl.textContent = isT ? 'heute' : 'Tag';
 }
 function refreshActiveDateViews() {
+  cancelNoteEdit();
+  const noteInput = document.getElementById('note-input');
+  if (noteInput) noteInput.value = '';
   renderDateNav();
   renderSportHabits();
   renderOtherHabits();
@@ -975,12 +962,15 @@ function renderSportHabits() {
 
     const intensity = entry ? entry.intensity : null;
     const intLabel = intensity ? ` · ${LEVEL_LABELS[intensity]}` : '';
+    const goal = getSportGoals()[h.id] || 0;
+    const weekCount = countSportInWeek(h.id, activeDate);
+    const goalText = goal > 0 ? ` · ${weekCount}/${goal} diese Woche${weekCount>=goal?' ✅':''}` : '';
 
     card.innerHTML = `
       <div class="habit-icon">${h.icon}</div>
       <div class="habit-info" style="flex:1;">
         <div class="habit-name">${h.name}</div>
-        <div class="habit-sub" id="ssub-${h.id}">${isDone ? 'Trainiert ✓' + intLabel : h.sub}</div>
+        <div class="habit-sub" id="ssub-${h.id}">${(isDone ? 'Trainiert ✓' + intLabel : h.sub)}${goalText}</div>
         ${isDone ? `<div class="intensity-row" id="irow-${h.id}">
           <div class="int-btn${intensity==='high'?' sel-high':''}" onclick="setSportIntensity('${h.id}','high',event)">Intensiv</div>
           <div class="int-btn${intensity==='mid'?' sel-mid':''}"  onclick="setSportIntensity('${h.id}','mid',event)">Normal</div>
@@ -1028,6 +1018,51 @@ function setSportIntensity(id, val, e) {
   day.sport[id].intensity = day.sport[id].intensity === val ? null : val;
   saveDay(key, day);
   renderSportHabits();
+}
+
+// ══════════════════════════════════════════
+// WOCHENZIELE SPORT
+// ══════════════════════════════════════════
+function getSportGoals() { try { return JSON.parse(localStorage.getItem('sport_goals')||'{}'); } catch(e) { return {}; } }
+function saveSportGoals(g) { localStorage.setItem('sport_goals', JSON.stringify(g)); }
+
+function countSportInWeek(id, refKey) {
+  const monday = getWeekKey(new Date(refKey + 'T00:00:00Z'));
+  let count = 0;
+  for (let i=0;i<7;i++) {
+    const day = getDay(addDaysToKey(monday, i));
+    if (day.sport[id]) count++;
+  }
+  return count;
+}
+
+function adjustSportGoal(id, delta) {
+  const goals = getSportGoals();
+  const cur = goals[id] || 0;
+  goals[id] = Math.max(0, Math.min(7, cur + delta));
+  saveSportGoals(goals);
+  renderSportGoals();
+  renderSportHabits();
+}
+
+function renderSportGoals() {
+  const section = document.getElementById('sport-goals-section');
+  if (!section) return;
+  section.innerHTML = SPORT_HABITS.map(h => {
+    const goal = getSportGoals()[h.id] || 0;
+    const sub = goal > 0 ? `Wochenziel: ${goal}x` : 'Kein Wochenziel gesetzt';
+    return `<div class="settings-row" style="cursor:default;">
+      <div class="settings-row-left">
+        <div class="settings-row-icon" style="background:var(--bg3);">${h.icon}</div>
+        <div><div class="settings-row-name">${h.name}</div><div class="settings-row-sub">${sub}</div></div>
+      </div>
+      <div class="goal-stepper">
+        <div class="goal-btn" onclick="adjustSportGoal('${h.id}',-1)">−</div>
+        <div class="goal-val">${goal}</div>
+        <div class="goal-btn" onclick="adjustSportGoal('${h.id}',1)">+</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════
@@ -1266,6 +1301,8 @@ function updateTodayStats() {
 // ══════════════════════════════════════════
 // NOTES
 // ══════════════════════════════════════════
+let editingNoteIndex = null;
+
 function renderNotes() {
   const key = activeDate;
   const day = getDay(key);
@@ -1274,10 +1311,14 @@ function renderNotes() {
   list.innerHTML = '';
   if (!day.notes || day.notes.length === 0) { label.style.display='none'; return; }
   label.style.display='block';
-  [...day.notes].reverse().forEach(n => {
+  day.notes.map((n,idx) => ({n,idx})).reverse().forEach(({n,idx}) => {
     const el = document.createElement('div');
     el.className = 'note-entry fade-in';
-    el.innerHTML = `<div class="note-dot"></div><div><div class="note-text">${n.text}</div><div class="note-time">${n.time}</div></div>`;
+    el.innerHTML = `<div class="note-dot"></div><div style="flex:1;"><div class="note-text">${n.text}</div><div class="note-time">${n.time}</div></div>
+      <div class="note-actions">
+        <i class="fa-solid fa-pen" onclick="editNote(${idx})"></i>
+        <i class="fa-solid fa-trash" onclick="deleteNote(${idx})"></i>
+      </div>`;
     list.appendChild(el);
   });
 }
@@ -1288,10 +1329,36 @@ function addNote() {
   const key = activeDate;
   const day = getDay(key);
   if (!day.notes) day.notes = [];
-  const now = new Date();
-  day.notes.push({ text, time: now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')+' Uhr' });
+  if (editingNoteIndex !== null && day.notes[editingNoteIndex]) {
+    day.notes[editingNoteIndex].text = text;
+    cancelNoteEdit();
+  } else {
+    const now = new Date();
+    day.notes.push({ text, time: now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')+' Uhr' });
+  }
   saveDay(key, day);
   inp.value = '';
+  renderNotes();
+}
+function editNote(idx) {
+  const day = getDay(activeDate);
+  const n = day.notes && day.notes[idx];
+  if (!n) return;
+  editingNoteIndex = idx;
+  document.getElementById('note-input').value = n.text;
+  document.getElementById('note-input').focus();
+  document.getElementById('note-save-btn').textContent = 'Aktualisieren';
+}
+function cancelNoteEdit() {
+  editingNoteIndex = null;
+  document.getElementById('note-save-btn').textContent = 'Speichern';
+}
+function deleteNote(idx) {
+  const day = getDay(activeDate);
+  if (!day.notes) return;
+  day.notes.splice(idx, 1);
+  saveDay(activeDate, day);
+  if (editingNoteIndex === idx) { cancelNoteEdit(); document.getElementById('note-input').value = ''; }
   renderNotes();
 }
 
@@ -1779,6 +1846,7 @@ function showScreen(name, navEl) {
   if (name==='stats') renderStats();
   if (name==='settings') {
     updateSyncBadge();
+    renderSportGoals();
   }
 }
 
