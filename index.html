@@ -184,6 +184,9 @@
     .range-row { display: flex; gap: 4px; margin-bottom: 14px; }
     .range-btn { flex: 1; text-align: center; padding: 7px 4px; border: 0.5px solid var(--border-med); border-radius: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text2); background: var(--bg2); cursor: pointer; transition: all 0.15s; }
     .range-btn.active { background: var(--accent); color: var(--bg0); border-color: var(--accent); font-weight: 700; }
+    .subtab-row { display: flex; border-bottom: 0.5px solid var(--border); margin-bottom: 16px; }
+    .subtab { flex: 1; text-align: center; padding: 10px 4px; font-family: var(--font-head); font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+    .subtab.active { color: var(--text0); border-bottom-color: var(--accent); }
     .metric-tab-row { display: flex; gap: 3px; margin-bottom: 12px; overflow-x: auto; }
     .metric-tab { flex: 1; text-align: center; padding: 6px 3px; border: 0.5px solid var(--border-med); border-radius: 7px; font-family: var(--font-mono); font-size: 10px; color: var(--text2); background: var(--bg3); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .metric-tab.active { background: var(--blue-dim); color: var(--blue-text); border-color: rgba(96,184,240,0.35); font-weight: 700; }
@@ -467,61 +470,76 @@
       <div class="range-btn" data-range="all" onclick="setStatsRange('all',this)">Alle</div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-title" id="bar-chart-title">Habits im Zeitverlauf</div>
-      <div class="bar-chart-scroll"><div class="bar-chart" id="bar-chart"></div></div>
+    <div class="subtab-row" id="verlauf-subtabs">
+      <div class="subtab active" data-tab="overview" onclick="setVerlaufTab('overview',this)">Übersicht</div>
+      <div class="subtab" data-tab="trends" onclick="setVerlaufTab('trends',this)">Trends</div>
+      <div class="subtab" data-tab="analyse" onclick="setVerlaufTab('analyse',this)">Analyse</div>
+      <div class="subtab" data-tab="erfolge" onclick="setVerlaufTab('erfolge',this)">Erfolge</div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-title" id="habit-breakdown-title">Habit-Aufschlüsselung</div>
-      <div class="prog-row" id="habit-breakdown"></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-title" id="heatmap-title">Aktivität</div>
-      <div class="streak-grid-scroll"><div class="streak-grid" id="streak-grid"></div></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-title" id="notes-overview-title">Notizen</div>
-      <div id="notes-overview-list"></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-title">Vibe Score im Zeitverlauf</div>
-      <div id="feeling-chart"></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-title">Keto-Score im Zeitverlauf</div>
-      <div id="keto-score-chart"></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-title">WHOOP Trends</div>
-      <div class="metric-tab-row" id="whoop-metric-row">
-        <div class="metric-tab active" data-metric="recovery" onclick="setWhoopMetric('recovery',this)">Recovery</div>
-        <div class="metric-tab" data-metric="sleep" onclick="setWhoopMetric('sleep',this)">Schlaf</div>
-        <div class="metric-tab" data-metric="hrv" onclick="setWhoopMetric('hrv',this)">HRV</div>
-        <div class="metric-tab" data-metric="rhr" onclick="setWhoopMetric('rhr',this)">RHR</div>
-        <div class="metric-tab" data-metric="strain" onclick="setWhoopMetric('strain',this)">Strain</div>
+    <div id="verlauf-tab-overview">
+      <div class="chart-card">
+        <div class="chart-title" id="bar-chart-title">Habits im Zeitverlauf</div>
+        <div class="bar-chart-scroll"><div class="bar-chart" id="bar-chart"></div></div>
       </div>
-      <div id="whoop-history-chart"></div>
+
+      <div class="chart-card">
+        <div class="chart-title" id="habit-breakdown-title">Habit-Aufschlüsselung</div>
+        <div class="prog-row" id="habit-breakdown"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title" id="heatmap-title">Aktivität</div>
+        <div class="streak-grid-scroll"><div class="streak-grid" id="streak-grid"></div></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title" id="notes-overview-title">Notizen</div>
+        <div id="notes-overview-list"></div>
+      </div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-title">Insights</div>
-      <div id="insights-list"></div>
+    <div id="verlauf-tab-trends" style="display:none;">
+      <div class="chart-card">
+        <div class="chart-title">Vibe Score im Zeitverlauf</div>
+        <div id="feeling-chart"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Keto-Score im Zeitverlauf</div>
+        <div id="keto-score-chart"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">WHOOP Trends</div>
+        <div class="metric-tab-row" id="whoop-metric-row">
+          <div class="metric-tab active" data-metric="recovery" onclick="setWhoopMetric('recovery',this)">Recovery</div>
+          <div class="metric-tab" data-metric="sleep" onclick="setWhoopMetric('sleep',this)">Schlaf</div>
+          <div class="metric-tab" data-metric="hrv" onclick="setWhoopMetric('hrv',this)">HRV</div>
+          <div class="metric-tab" data-metric="rhr" onclick="setWhoopMetric('rhr',this)">RHR</div>
+          <div class="metric-tab" data-metric="strain" onclick="setWhoopMetric('strain',this)">Strain</div>
+        </div>
+        <div id="whoop-history-chart"></div>
+      </div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-title">Zusammenhänge</div>
-      <div id="correlations-list"></div>
+    <div id="verlauf-tab-analyse" style="display:none;">
+      <div class="chart-card">
+        <div class="chart-title">Insights</div>
+        <div id="insights-list"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Zusammenhänge</div>
+        <div id="correlations-list"></div>
+      </div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-title">Erfolge</div>
-      <div class="achv-grid" id="achv-grid"></div>
+    <div id="verlauf-tab-erfolge" style="display:none;">
+      <div class="chart-card">
+        <div class="chart-title">Erfolge</div>
+        <div class="achv-grid" id="achv-grid"></div>
+      </div>
     </div>
   </div>
 
@@ -1687,6 +1705,15 @@ function setStatsRange(r, btn) {
   document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderStats();
+}
+
+function setVerlaufTab(tab, btn) {
+  document.querySelectorAll('#verlauf-subtabs .subtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['overview','trends','analyse','erfolge'].forEach(t => {
+    const el = document.getElementById('verlauf-tab-'+t);
+    if (el) el.style.display = (t === tab) ? '' : 'none';
+  });
 }
 
 function addDaysToKey(key, n) {
