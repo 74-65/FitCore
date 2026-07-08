@@ -1773,7 +1773,7 @@ function renderStreakGrid() {
 }
 
 function buildLineChartSvg(keys, valueFn, minVal, maxVal, color) {
-  const w = 300, h = 80, pad = 8;
+  const w = 300, h = 80, padTop = 8, padBottom = 8, padLeft = 28, padRight = 8;
   const pts = [];
   keys.forEach((k, i) => {
     const v = valueFn(k);
@@ -1781,11 +1781,23 @@ function buildLineChartSvg(keys, valueFn, minVal, maxVal, color) {
   });
   if (pts.length < 2) return null;
   const xMax = keys.length - 1;
-  const scaleX = x => pad + (xMax>0 ? (x/xMax) : 0) * (w - 2*pad);
-  const scaleY = y => h - pad - ((y-minVal)/(maxVal-minVal)) * (h - 2*pad);
+  const plotW = w - padLeft - padRight;
+  const plotH = h - padTop - padBottom;
+  const scaleX = x => padLeft + (xMax>0 ? (x/xMax) : 0) * plotW;
+  const scaleY = y => padTop + plotH - ((y-minVal)/(maxVal-minVal)) * plotH;
   const pathD = pts.map((p,i) => (i===0?'M':'L') + scaleX(p.x).toFixed(1) + ',' + scaleY(p.y).toFixed(1)).join(' ');
   const circles = pts.map(p => `<circle cx="${scaleX(p.x).toFixed(1)}" cy="${scaleY(p.y).toFixed(1)}" r="2" fill="${color}"/>`).join('');
+
+  const fmtVal = v => { const r = Math.round(v*10)/10; return Number.isInteger(r) ? String(r) : r.toFixed(1); };
+  const gridLevels = [maxVal, (minVal+maxVal)/2, minVal];
+  const grid = gridLevels.map(v => {
+    const y = scaleY(v).toFixed(1);
+    return `<line x1="${padLeft}" y1="${y}" x2="${w-padRight}" y2="${y}" stroke="rgba(255,255,255,0.09)" stroke-width="1"/>
+      <text x="${padLeft-6}" y="${y}" text-anchor="end" dominant-baseline="middle" font-size="8" fill="var(--text2)" font-family="monospace">${fmtVal(v)}</text>`;
+  }).join('');
+
   return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;display:block;">
+    ${grid}
     <path d="${pathD}" fill="none" stroke="${color}" stroke-width="1.5"/>
     ${circles}
   </svg>`;
