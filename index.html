@@ -255,6 +255,11 @@
     .goal-btn { width: 26px; height: 26px; border-radius: 7px; background: var(--bg3); border: 0.5px solid var(--border-med); display: flex; align-items: center; justify-content: center; color: var(--text1); cursor: pointer; font-size: 14px; font-weight: 700; }
     .goal-val { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text0); min-width: 12px; text-align: center; }
     .version-label { text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--text2); letter-spacing: 0.06em; padding: 6px 0 14px; }
+    .reminder-banner { display: none; align-items: center; gap: 10px; background: var(--amber-dim); border: 0.5px solid rgba(240,168,64,0.35); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 14px; font-size: 12px; color: var(--amber); }
+    .reminder-banner i.fa-bell { flex-shrink: 0; }
+    .reminder-banner span { flex: 1; }
+    .reminder-dismiss { cursor: pointer; opacity: 0.7; flex-shrink: 0; }
+    .reminder-dismiss:hover { opacity: 1; }
 
     @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.06)} 100%{transform:scale(1)} }
     .pop { animation: pop 0.22s ease; }
@@ -293,6 +298,12 @@
       <div class="date-nav-arrow" onclick="shiftActiveDate(-1)"><i class="fa-solid fa-chevron-left"></i></div>
       <div class="date-nav-center"><div class="date-nav-label">Heute</div></div>
       <div class="date-nav-arrow date-nav-next disabled" onclick="shiftActiveDate(1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+
+    <div class="reminder-banner" id="reminder-banner">
+      <i class="fa-solid fa-bell"></i>
+      <span>Noch nichts getrackt heute — kurz Zeit dafür?</span>
+      <i class="fa-solid fa-xmark reminder-dismiss" onclick="dismissReminder()"></i>
     </div>
 
     <div class="stats-row">
@@ -719,6 +730,28 @@ function refreshActiveDateViews() {
   renderNotes();
   updateTodayStats();
   loadKetoScreen();
+  checkDailyReminder();
+}
+
+// ══════════════════════════════════════════
+// TAGES-ERINNERUNG (In-App, kein Push)
+// ══════════════════════════════════════════
+function checkDailyReminder() {
+  const banner = document.getElementById('reminder-banner');
+  if (!banner) return;
+  const today = todayKey();
+  if (activeDate !== today) { banner.style.display = 'none'; return; }
+  if (new Date().getHours() < 18) { banner.style.display = 'none'; return; }
+  if (localStorage.getItem('reminder_dismissed_date') === today) { banner.style.display = 'none'; return; }
+  const day = getDay(today);
+  const habitsDone = ALL_HABITS.some(h => day.habits[h.id] || day.sport[h.id]);
+  if (habitsDone || day.feeling) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+}
+function dismissReminder() {
+  localStorage.setItem('reminder_dismissed_date', todayKey());
+  const banner = document.getElementById('reminder-banner');
+  if (banner) banner.style.display = 'none';
 }
 
 // ══════════════════════════════════════════
@@ -913,6 +946,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderFeelingRow();
   renderNotes();
   renderStats();
+  checkDailyReminder();
   renderWhoopBlock();
   updateWhoopSettings();
   // Auto-sync WHOOP if connected and data is older than 30 min
@@ -1055,6 +1089,7 @@ function toggleSport(id) {
   checkStreakCelebrations();
   checkPerfectDay();
   checkNewAchievements();
+  checkDailyReminder();
 }
 
 function setSportIntensity(id, val, e) {
@@ -1156,6 +1191,7 @@ function toggleHabit(id) {
   checkStreakCelebrations();
   checkPerfectDay();
   checkNewAchievements();
+  checkDailyReminder();
 }
 
 // ══════════════════════════════════════════
@@ -1190,6 +1226,7 @@ function setFeeling(v) {
   renderFeelingRow();
   checkPerfectDay();
   checkNewAchievements();
+  checkDailyReminder();
 }
 
 // ══════════════════════════════════════════
