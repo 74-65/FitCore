@@ -194,14 +194,6 @@
     .insight-item:last-child { border-bottom: none; }
     .insight-item i { color: var(--accent); margin-top: 2px; flex-shrink: 0; }
     .bar-chart-scroll { overflow-x: auto; }
-    .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 80px; min-width: 100%; }
-    .bar-chart.dense { gap: 2px; }
-    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .bar-chart.dense .bar-col { flex: none; width: 6px; }
-    .bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 3px; background: var(--bg3); transition: height 0.4s ease; }
-    .bar.done { background: var(--accent); }
-    .bar-lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text2); }
-    .bar-lbl.today { color: var(--accent); }
     .prog-row { display: flex; flex-direction: column; gap: 5px; }
     .prog-item { display: flex; align-items: center; gap: 8px; }
     .prog-lbl { font-size: 11px; width: 110px; flex-shrink: 0; color: var(--text1); }
@@ -1780,26 +1772,41 @@ function renderStats() {
 }
 
 function renderBarChart() {
-  const chart = document.getElementById('bar-chart');
-  chart.innerHTML = '';
+  const el = document.getElementById('bar-chart');
   const keys = getRangeKeys(statsRange);
   const dense = keys.length > 14;
-  chart.className = 'bar-chart' + (dense ? ' dense' : '');
+  const h = 90, padTop = 8, padBottom = dense ? 8 : 20, padLeft = 28, padRight = 8;
+  const plotH = h - padTop - padBottom;
+  const colW = dense ? 8 : (300 - padLeft - padRight) / keys.length;
+  const w = dense ? padLeft + padRight + keys.length * colW : 300;
+  const barW = Math.max(2, colW - (dense ? 2 : 4));
   const dayNames = ['So','Mo','Di','Mi','Do','Fr','Sa'];
-  const maxH = 72;
+
+  let bars = '';
   keys.forEach((key, idx) => {
     const day = getDay(key);
-    const done = ALL_HABITS.filter(h => day.habits[h.id]||day.sport[h.id]).length;
-    const pct = done/ALL_HABITS.length;
-    const h = Math.max(3, Math.round(pct*maxH));
+    const done = ALL_HABITS.filter(hh => day.habits[hh.id]||day.sport[hh.id]).length;
+    const pct = ALL_HABITS.length ? done/ALL_HABITS.length : 0;
+    const barH = Math.max(2, pct*plotH);
     const isToday = idx === keys.length-1;
-    const col = document.createElement('div');
-    col.className = 'bar-col';
-    const dow = new Date(key+'T00:00:00Z').getUTCDay();
-    const lbl = dense ? '' : `<div class="bar-lbl${isToday?' today':''}">${dayNames[dow]}</div>`;
-    col.innerHTML = `<div class="bar${done>0?' done':''}" style="height:${h}px;opacity:${isToday?1:0.6};" title="${key}"></div>${lbl}`;
-    chart.appendChild(col);
+    const x = padLeft + idx*colW + (colW-barW)/2;
+    const y = padTop + plotH - barH;
+    const color = done>0 ? 'var(--accent)' : 'var(--bg3)';
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="1.5" fill="${color}" opacity="${isToday?1:0.6}"><title>${key}</title></rect>`;
+    if (!dense) {
+      const dow = new Date(key+'T00:00:00Z').getUTCDay();
+      bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-6}" text-anchor="middle" font-size="8" fill="${isToday?'var(--accent)':'var(--text2)'}" font-family="monospace">${dayNames[dow]}</text>`;
+    }
   });
+
+  let grid = '';
+  [100,50,0].forEach(pctVal => {
+    const y = (padTop + plotH - (pctVal/100)*plotH).toFixed(1);
+    grid += `<line x1="${padLeft}" y1="${y}" x2="${w-padRight}" y2="${y}" stroke="rgba(255,255,255,0.09)" stroke-width="1"/>
+      <text x="${padLeft-6}" y="${y}" text-anchor="end" dominant-baseline="middle" font-size="8" fill="var(--text2)" font-family="monospace">${pctVal}%</text>`;
+  });
+
+  el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:${dense ? w+'px' : '100%'};display:block;">${grid}${bars}</svg>`;
 }
 
 function renderHabitBreakdown() {
