@@ -472,6 +472,11 @@
     </div>
 
     <div class="chart-card">
+      <div class="chart-title" id="notes-overview-title">Notizen</div>
+      <div id="notes-overview-list"></div>
+    </div>
+
+    <div class="chart-card">
       <div class="chart-title">Vibe Score im Zeitverlauf</div>
       <div id="feeling-chart"></div>
     </div>
@@ -555,6 +560,14 @@
         </div>
         <i class="fa-solid fa-chevron-right" style="color:var(--text2);font-size:12px;"></i>
       </div>
+      <div class="settings-row" onclick="importData()">
+        <div class="settings-row-left">
+          <div class="settings-row-icon" style="background:var(--bg3);">📥</div>
+          <div><div class="settings-row-name">Daten importieren</div><div class="settings-row-sub">Aus JSON-Datei wiederherstellen</div></div>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="color:var(--text2);font-size:12px;"></i>
+      </div>
+      <input type="file" id="import-file-input" accept="application/json" style="display:none;" onchange="handleImportFile(event)">
       <div class="settings-row" onclick="if(confirm('Alle Daten löschen?')) clearData()">
         <div class="settings-row-left">
           <div class="settings-row-icon" style="background:var(--red-dim);">🗑️</div>
@@ -1693,6 +1706,7 @@ function renderStats() {
   renderBarChart();
   renderHabitBreakdown();
   renderStreakGrid();
+  renderNotesOverview();
   renderFeelingChart();
   renderKetoScoreChart();
   renderWhoopHistoryChart();
@@ -1770,6 +1784,36 @@ function renderStreakGrid() {
     }
     grid.appendChild(cell);
   });
+}
+
+function renderNotesOverview() {
+  const container = document.getElementById('notes-overview-list');
+  if (!container) return;
+  document.getElementById('notes-overview-title').textContent = 'Notizen (' + rangeLabel() + ')';
+  const keys = getRangeKeys(statsRange);
+  const dayNames = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const items = [];
+  keys.forEach(key => {
+    const day = getDay(key);
+    if (day.notes) day.notes.forEach(n => items.push({ key, text: n.text, time: n.time }));
+  });
+  items.reverse(); // neueste zuerst
+  if (items.length === 0) {
+    container.innerHTML = `<div class="score-chart-empty">Noch keine Notizen im gewählten Zeitraum</div>`;
+    return;
+  }
+  container.innerHTML = items.map(it => {
+    const d = new Date(it.key + 'T00:00:00Z');
+    const dateStr = `${dayNames[d.getUTCDay()]}, ${d.getUTCDate()}. ${months[d.getUTCMonth()]}`;
+    return `<div class="note-entry" style="margin-bottom:7px;">
+      <div class="note-dot"></div>
+      <div style="flex:1;">
+        <div class="note-text">${it.text}</div>
+        <div class="note-time">${dateStr} · ${it.time}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function buildLineChartSvg(keys, valueFn, minVal, maxVal, color) {
@@ -2367,6 +2411,34 @@ function exportData() {
   a.click();
 }
 function clearData() { localStorage.removeItem('tracker_v2'); location.reload(); }
+
+function importData() {
+  document.getElementById('import-file-input').click();
+}
+function handleImportFile(e) {
+  const file = e.target.files[0];
+  if (!file) { return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    let imported;
+    try {
+      imported = JSON.parse(reader.result);
+      if (!imported || typeof imported !== 'object' || !imported.days) throw new Error('invalid');
+    } catch (err) {
+      alert('Datei konnte nicht gelesen werden. Ist es eine gültige FitCore-Export-Datei?');
+      e.target.value = '';
+      return;
+    }
+    if (!confirm('Aktuelle Daten durch die importierte Datei ersetzen? Das kann nicht rückgängig gemacht werden.')) {
+      e.target.value = '';
+      return;
+    }
+    saveState(imported);
+    e.target.value = '';
+    location.reload();
+  };
+  reader.readAsText(file);
+}
 </script>
 <script>
   if ('serviceWorker' in navigator) {
